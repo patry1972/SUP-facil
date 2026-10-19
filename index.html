@@ -48,36 +48,42 @@ const beaches={
 "Cala Bota":{note:"Observación desde la orilla · confianza media",detail:"Aunque parecía resguardada, había movimiento del agua y entrada/salida complicada por rocas y olas. El viento flojo por sí solo no bastó para considerarla favorable.",risk:1},
 "Cala Mitjana":{note:"Observación desde la orilla · confianza media",detail:"Mar movido y sensación de viento más fuerte en la visita; condiciones desfavorables entonces.",risk:1},
 "Portocolom":{note:"Acceso complicado · confianza baja para SUP",detail:"En la visita, los acantilados impidieron acceder para salir y el mar golpeaba fuerte. No hay validación de una ruta de SUP.",risk:1},
-"Playa del Castillo (Fuengirola)":{note:"Observación desde la orilla · confianza media",detail:"En la visita registrada, el mar estaba movido, con olas cortas y ligero chop. El viento moderado no resultaba demasiado molesto, pero la rompiente cerca de la orilla dificultaba la entrada y la salida, y también complicaba la navegación. Referencia de previsión aproximada: olas de 0,5–0,7 m, periodo de 4 s y energía de 6–16 kJ, con viento medio de 3,5–4,5 m/s. No se hizo una salida validada en SUP.",risk:1}
+"Playa del Castillo (Fuengirola)":{note:"Observación desde la orilla · confianza media",detail:"En la visita registrada, el mar estaba movido, con olas cortas y ligero chop. El viento moderado no resultaba demasiado molesto, pero la rompiente cerca de la orilla dificultaba la entrada y la salida, y también complicaba la navegación. Referencia de previsión aproximada: olas de 0,5–0,7 m, periodo de 4 s y energía de 6–16 kJ, con viento medio de 3,5–4,5 m/s. No se hizo una salida validada en SUP.",risk:1},
+"Playa del Cañuelo":{note:"Perfil inicial · pendiente de validar",detail:"Ubicación añadida desde el archivo de coordenadas. No hay observaciones suficientes de viento, oleaje, corrientes ni entrada/salida; comprueba el mar real antes de decidir.",risk:1},
+"Cala Domingos":{note:"Perfil inicial · pendiente de validar",detail:"Ubicación añadida desde el archivo de coordenadas. No hay observaciones suficientes de viento, oleaje, corrientes ni entrada/salida; comprueba el mar real antes de decidir.",risk:1},
+"Playa Cabopino":{note:"Perfil inicial · pendiente de validar",detail:"Ubicación añadida desde el archivo de coordenadas. No hay observaciones suficientes de viento, oleaje, corrientes ni entrada/salida; comprueba el mar real antes de decidir.",risk:1}
 };
 const $=id=>document.getElementById(id);const sel=$('beach');
 const beachProvince={
 'Las Doradas':'Málaga','Torre del Pino':'Málaga','La Herradura / Cotobro':'Granada','Marina del Este':'Granada','Punta de la Mona':'Granada','Playa de Calabajío (Almuñécar)':'Granada','Playa Cabria':'Granada','Las Alberquillas (Maro)':'Málaga','Los Boliches (Fuengirola)':'Málaga','El Bombo (Mijas)':'Málaga','Maro (Málaga)':'Málaga','Playa del Castillo (Fuengirola)':'Málaga',
-'Cala Murada (Mallorca)':'Illes Balears','Cala San Vicent':'Illes Balears','Cala Serena':'Illes Balears','Caló des Borgit':'Illes Balears','Cala Torta':'Illes Balears','Cala Bota':'Illes Balears','Cala Mitjana':'Illes Balears','Portocolom':'Illes Balears'};
+'Playa del Cañuelo':'Málaga','Playa Cabopino':'Málaga','Cala Domingos':'Illes Balears','Cala Murada (Mallorca)':'Illes Balears','Cala San Vicent':'Illes Balears','Cala Serena':'Illes Balears','Caló des Borgit':'Illes Balears','Cala Torta':'Illes Balears','Cala Bota':'Illes Balears','Cala Mitjana':'Illes Balears','Portocolom':'Illes Balears'};
 function rebuildBeachSelect(preferred){sel.innerHTML='';const provinces=[...new Set(Object.keys(beaches).map(n=>beachProvince[n]||'Málaga'))].sort((a,b)=>a.localeCompare(b,'es'));provinces.forEach(prov=>{const group=document.createElement('optgroup');group.label=prov;Object.keys(beaches).filter(n=>(beachProvince[n]||'Málaga')===prov).sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;group.appendChild(o)});sel.appendChild(group)});if(preferred&&beaches[preferred])sel.value=preferred;else if(beaches['Torre del Pino'])sel.value='Torre del Pino';}
 rebuildBeachSelect('Torre del Pino');
 // Coordenadas aproximadas para situar las playas; se pueden afinar con futuras visitas.
 const beachCoords={
-'Las Doradas':[36.5068,-4.6794],
-'Torre del Pino':[36.7524,-3.7904],
-'La Herradura / Cotobro':[36.7310,-3.7425],
-'Marina del Este':[36.7219,-3.7362],
-'Punta de la Mona':[36.7252,-3.7332],
-'Playa de Calabajío (Almuñécar)':[36.7378,-3.6738],
-'Playa Cabria':[36.7354,-3.6330],
-'Las Alberquillas (Maro)':[36.7555,-3.7900],
-'Los Boliches (Fuengirola)':[36.5514,-4.6151],
-'El Bombo (Mijas)':[36.5125,-4.6412],
-'Maro (Málaga)':[36.7527,-3.8350],
-'Cala Murada (Mallorca)':[39.4137,3.2665],
-'Cala San Vicent':[39.9225,3.0550],
-'Cala Serena':[39.3724,3.2380],
-'Caló des Borgit':[39.3626,3.2026],
-'Cala Torta':[39.7445,3.4326],
-'Cala Bota':[39.7590,3.4220],
-'Cala Mitjana':[39.7360,3.4330],
-'Portocolom':[39.4180,3.2580],
-'Playa del Castillo (Fuengirola)':[36.5245,-4.6250]
+"Las Doradas":[36.504087,-4.669086],
+"Torre del Pino":[36.746443,-3.800051],
+"La Herradura / Cotobro":[36.737388,-3.748645],
+"Marina del Este":[36.72305,-3.728075],
+"Punta de la Mona":[36.727975,-3.735479],
+"Playa de Calabajío (Almuñécar)":[36.746503,-3.656868],
+"Playa Cabria":[36.745412,-3.651665],
+"Las Alberquillas (Maro)":[36.747802,-3.803509],
+"Los Boliches (Fuengirola)":[36.5514,-4.6151],
+"El Bombo (Mijas)":[36.501512,-4.679224],
+"Maro (Málaga)":[36.7527,-3.835],
+"Cala Murada (Mallorca)":[39.4516,3.277275],
+"Cala San Vicent":[39.9225,3.055],
+"Cala Serena":[39.3724,3.238],
+"Caló des Borgit":[39.3626,3.2026],
+"Cala Torta":[39.7506,3.418048],
+"Cala Bota":[39.47531,3.286237],
+"Cala Mitjana":[39.752204,3.413992],
+"Portocolom":[39.418,3.258],
+"Playa del Castillo (Fuengirola)":[36.524726,-4.626702],
+"Playa del Cañuelo":[36.744772,-3.790444],
+"Cala Domingos":[39.456664,3.277588],
+"Playa Cabopino":[36.48414,-4.741936]
 };
 let beachMap=null,beachMarkers={},mapReady=false,editingLocation=false,addingBeach=false,pendingCoords=null,originalCoords=null;
 const LOCATION_STORAGE_KEY='supfacil_corrected_beach_locations_v1';
