@@ -167,19 +167,21 @@ function summarizeBestHours(){
   const w=weather.hourly.wind_speed_10m?.[i], g=weather.hourly.wind_gusts_10m?.[i], wd=weather.hourly.wind_direction_10m?.[i];
   const h=marine.hourly.wave_height?.[mi], p=marine.hourly.wave_period?.[mi], waveDir=marine.hourly.wave_direction?.[mi];
   if(!valid(w)||!valid(h))continue;
-  let score=100;
-  score-=w<=3?0:w<=4?8:w<=5?18:w<=6?30:w<=8?45:65;
-  score-=Math.max(0,(valid(g)?g:w)-w)<=1?0:Math.max(0,(valid(g)?g:w)-w)<=2?5:Math.max(0,(valid(g)?g:w)-w)<=3?10:18;
-  score-=h<=.2?0:h<=.3?8:h<=.4?16:h<=.5?25:h<=.7?40:h<=.9?55:70;
-  if(valid(p)&&p>=7&&h>=.4)score-=8;
-  let relation='sin orientación validada';
-  if(valid(wd)&&valid(facing)){
-   const d=angleDiff(wd,facing);
-   if(d<=45){score-=4;relation='mar → tierra';}
-   else if(d>=135){score-=22;relation='tierra → mar';}
-   else {score-=10;relation='lateral';}
-  }
-  candidates.push({i,dt,w,g:valid(g)?g:w,h,p,score:Math.max(0,Math.round(score)),relation});
+  const ex=document.querySelector('input[name="exposure"]:checked')?.value||'sheltered';
+   const ww=Math.max(0,Math.min(15,Math.round(w*2)/2)), gg=Math.max(0,Math.min(20,Math.round((valid(g)?g:w)*2)/2));
+   const hh=Math.max(0,Math.min(1.5,Math.round(h*10)/10)), pp=valid(p)?Math.max(2,Math.min(12,Math.round(p))):0;
+   const wp=ww<=3?0:ww<=4?3:ww<=5?7:ww<=6?12:ww<=7?18:ww<=8?25:ww<=10?30:40;
+   const gustDiff=Math.max(0,gg-ww), gp=gustDiff<=1?0:gustDiff<=2?2:gustDiff<=3?5:gustDiff<=4?9:14;
+   const hp=hh<=.2?0:hh<=.3?2:hh<=.4?5:hh<=.5?8:hh<=.7?13:hh<=.9?20:hh<=1.1?27:30;
+   let score=Math.max(0,100-wp-gp-hp-(ex==='exposed'?10:ex==='some'?4:0)-(pp>=7&&hh>=.5?4:0));
+   let relation='sin orientación validada';
+   if(valid(wd)&&valid(facing)){const d=angleDiff(wd,facing);if(d>=135){score-=12;relation='tierra → mar';}else if(d>45){score-=6;relation='lateral';}else relation='mar → tierra';}
+   score=Math.max(0,Math.round(score));
+   const entry=Math.max(0,100-(hh>.8?35:hh>.5?22:hh>.3?10:0)-(ww>7?15:ww>5?8:0)-(beaches[sel.value]?.risk?20:0));
+   const hard=ww>10||hh>1.3;
+   const bandLevel=x=>hard||x<40?0:x<55?1:x<70?2:3;
+   const levelIndex=Math.min(bandLevel(score),bandLevel(entry));
+   candidates.push({i,dt,w,g:valid(g)?g:w,h,p,score:Math.max(0,Math.round(score)),relation});
  }
  // Buscar la franja diurna consecutiva más favorable antes de ordenar por puntuación.
  const chronological=[...candidates].sort((a,b)=>a.dt-b.dt);
@@ -287,22 +289,24 @@ async function loadForecastForSelectedBeach(){
    const valid=n=>Number.isFinite(n);
    let score=null;
    if(valid(w)&&valid(h)){
-    score=100;
-    score-=w<=3?0:w<=4?8:w<=5?18:w<=6?30:w<=8?45:65;
-    const gustDiff=Math.max(0,(valid(g)?g:w)-w);
-    score-=gustDiff<=1?0:gustDiff<=2?5:gustDiff<=3?10:18;
-    score-=h<=.2?0:h<=.3?8:h<=.4?16:h<=.5?25:h<=.7?40:h<=.9?55:70;
-    if(valid(p)&&p>=7&&h>=.4)score-=8;
+    const ex=document.querySelector('input[name="exposure"]:checked')?.value||'sheltered';
+    const ww=Math.max(0,Math.min(15,Math.round(w*2)/2)), gg=Math.max(0,Math.min(20,Math.round((valid(g)?g:w)*2)/2));
+    const hh=Math.max(0,Math.min(1.5,Math.round(h*10)/10)), pp=valid(p)?Math.max(2,Math.min(12,Math.round(p))):0;
+    const wp=ww<=3?0:ww<=4?3:ww<=5?7:ww<=6?12:ww<=7?18:ww<=8?25:ww<=10?30:40;
+    const gustDiff=Math.max(0,gg-ww), gp=gustDiff<=1?0:gustDiff<=2?2:gustDiff<=3?5:gustDiff<=4?9:14;
+    const hp=hh<=.2?0:hh<=.3?2:hh<=.4?5:hh<=.5?8:hh<=.7?13:hh<=.9?20:hh<=1.1?27:30;
+    let navScore=Math.max(0,100-wp-gp-hp-(ex==='exposed'?10:ex==='some'?4:0)-(pp>=7&&hh>=.5?4:0));
     const facing=beachSeaBearing[sel.value];
-    if(valid(wd)&&valid(facing)){
-     const d=angleDiff(wd,facing);
-     score-=d<=45?4:d>=135?22:10;
-    }
-    score=Math.max(0,Math.round(score));
+    if(valid(wd)&&valid(facing)){const d=angleDiff(wd,facing);navScore-=d>=135?12:d>45?6:0;}
+    navScore=Math.max(0,Math.round(navScore));
+    const entryScore=Math.max(0,100-(hh>.8?35:hh>.5?22:hh>.3?10:0)-(ww>7?15:ww>5?8:0)-(beaches[sel.value]?.risk?20:0));
+    const hard=ww>10||hh>1.3;
+    const bandLevel=x=>hard||x<40?0:x<55?1:x<70?2:3;
+    score=Math.min(bandLevel(navScore),bandLevel(entryScore));
    }
-   const light=score===null?'⚪':score>=78?'🟢':score>=55?'🟡':'🔴';
+   const light=score===null?'⚪':score===3?'🟢':score===2?'🟡':score===1?'🟠':'🔴';
    opt.textContent=light+' '+t.slice(11,16);
-   if(score!==null)opt.title=(score>=78?'Más favorable':score>=55?'Precaución':'Poco favorable')+' · índice orientativo '+score+'/100';
+   if(score!==null)opt.title=(score===3?'Favorable':score===2?'Precaución':score===1?'Difícil':'No recomendada')+' · nivel más prudente entre navegación y entrada/salida';
    group.appendChild(opt);
   });
   hourSelect.disabled=false;hourSelect.value=String(nearest);applyForecastHour(nearest);summarizeBestHours();
