@@ -165,11 +165,12 @@ async function loadForecastForSelectedBeach(){
   hourSelect.innerHTML='';
   let lastDate='';
   const now=new Date();
+  const todayKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
   let nearest=0,nearestDiff=Infinity;
   times.forEach((t,i)=>{
    const dt=new Date(t), date=t.slice(0,10), diff=Math.abs(dt.getTime()-now.getTime());
    if(diff<nearestDiff){nearestDiff=diff;nearest=i;}
-   if(date!==lastDate){const group=document.createElement('optgroup');group.label=date===now.toLocaleDateString('en-CA')?'Hoy · '+date:date;hourSelect.appendChild(group);lastDate=date;}
+   if(date!==lastDate){const group=document.createElement('optgroup');group.label=date===todayKey?'Hoy · '+date:date;hourSelect.appendChild(group);lastDate=date;}
    const group=hourSelect.lastElementChild;
    const opt=document.createElement('option');opt.value=String(i);opt.textContent=t.slice(11,16);group.appendChild(opt);
   });
