@@ -124,7 +124,7 @@ async function searchOtherBeach(){
   let items=[];
   // Primero buscar en OpenStreetMap, que incluye playas y puntos de interés; Open-Meteo suele buscar poblaciones.
   try{
-   const q=query+( /\\b(españa|spain)\\b/i.test(query)?'':', España');
+   const q=query+( /(españa|spain)/i.test(query)?'':', España');
    const url='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&q='+encodeURIComponent(q);
    const response=await fetch(url,{headers:{'Accept-Language':'es'}});
    if(response.ok){
