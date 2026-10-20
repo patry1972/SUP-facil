@@ -115,6 +115,16 @@ $('exportLocations').addEventListener('click',()=>{const added={};Object.keys(be
 $('showAllBeaches').addEventListener('click',()=>{if(mapReady){const pts=Object.values(beachMarkers).map(m=>m.getLatLng());if(pts.length)beachMap.fitBounds(L.latLngBounds(pts).pad(0.08));}});
 $('openMap').addEventListener('click',()=>{const c=beachCoords[sel.value];if(c)window.open('https://www.google.com/maps?q='+c[0]+','+c[1],'_blank','noopener');});
 let temporaryBeachNames=[];
+function showMapBeachFallback(results){
+ results.innerHTML='<p class="notice">El buscador por nombre no ha podido localizar esta playa. Podemos elegirla directamente en el mapa, que permite marcar el punto exacto de la costa.</p><button type="button" id="chooseBeachOnMap" class="secondary" style="margin-top:8px">📍 Elegir playa en el mapa</button>';
+ const fallback=$('chooseBeachOnMap');
+ if(fallback)fallback.addEventListener('click',()=>{
+  const mapSection=$('beachmap');
+  if(mapSection){mapSection.scrollIntoView({behavior:'smooth',block:'center'});}
+  setTimeout(()=>{if($('addBeach'))$('addBeach').click();},250);
+  results.innerHTML='<p class="notice">En el mapa, toca el punto exacto de la costa. Después escribe el nombre de la playa y la provincia. Se añadirá temporalmente a tu lista de este navegador y podrás ver su semáforo.</p>';
+ });
+}
 async function searchOtherBeach(){
  const input=$('otherBeachQuery'), results=$('otherBeachResults'), button=$('searchOtherBeach');
  const query=input.value.trim();
@@ -150,7 +160,7 @@ async function searchOtherBeach(){
     source:'Open-Meteo'
    }));
   }
-  if(!items.length){results.innerHTML='<p class="notice">No encuentro esa playa. Prueba con el nombre y el municipio (por ejemplo, «Bolonia, Tarifa» o «Calabajío, Almuñécar»).</p>';return;}
+  if(!items.length){showMapBeachFallback(results);return;}
   results.innerHTML='<p class="profile">Elige el resultado que corresponda a la playa. Comprueba el municipio antes de seleccionarlo.</p>';
   items.forEach(item=>{
    const label=item.label||[item.name,item.admin1,item.country].filter(Boolean).join(', ');
@@ -171,7 +181,7 @@ async function searchOtherBeach(){
    });
    results.appendChild(choice);
   });
- }catch(error){results.innerHTML='<p class="notice">No se pudo buscar la playa ahora. Comprueba la conexión e inténtalo de nuevo.</p>';}
+ }catch(error){showMapBeachFallback(results);}
  finally{button.disabled=false;}
 }
 $('searchOtherBeach').addEventListener('click',searchOtherBeach);
