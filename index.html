@@ -157,8 +157,12 @@ function summarizeBestHours(){
  const {weather,marine}=activeForecastData, times=weather.hourly?.time||[], mtimes=marine.hourly?.time||[];
  const facing=beachSeaBearing[sel.value], now=new Date();
  const valid=n=>Number.isFinite(n), candidates=[];
+ const daylight=new Map();
+ const daily=weather.daily||{};
+ (daily.time||[]).forEach((date,j)=>{const rise=daily.sunrise?.[j],set=daily.sunset?.[j];if(rise&&set)daylight.set(date,[new Date(rise).getTime(),new Date(set).getTime()]);});
+ const isDaylight=dt=>{const date=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');const span=daylight.get(date);if(span)return dt.getTime()>=span[0]&&dt.getTime()<=span[1];return dt.getHours()>=7&&dt.getHours()<21;};
  for(let i=0;i<times.length;i++){
-  const dt=new Date(times[i]); if(dt<now)continue;
+  const dt=new Date(times[i]); if(dt<now||!isDaylight(dt))continue;
   const mi=mtimes.indexOf(times[i]); if(mi<0)continue;
   const w=weather.hourly.wind_speed_10m?.[i], g=weather.hourly.wind_gusts_10m?.[i], wd=weather.hourly.wind_direction_10m?.[i];
   const h=marine.hourly.wave_height?.[mi], p=marine.hourly.wave_period?.[mi], waveDir=marine.hourly.wave_direction?.[mi];
@@ -181,7 +185,7 @@ function summarizeBestHours(){
  const top=candidates.slice(0,3);
  if(!top.length){box.textContent='No hay suficientes datos horarios para comparar las próximas horas.';return;}
  const level=s=>s>=78?'Más favorable según la previsión':s>=55?'Condiciones intermedias; precaución':'Poco favorable para principiantes';
- box.innerHTML='<strong>Comparación automática de horas · '+sel.value+'</strong><p class="profile">Orden orientativo de las próximas horas según viento, rachas, altura y periodo de ola y, cuando está disponible, dirección del viento respecto a la playa.</p>'+top.map((x,j)=>'<p><strong>'+(j+1)+'. '+x.dt.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+x.dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong><br>'+level(x.score)+' · índice comparativo '+x.score+'/100<br>Viento '+fmt(x.w,1)+' kn; rachas '+fmt(x.g,1)+' kn; olas '+fmt(x.h,2)+' m'+(valid(x.p)?'; periodo '+fmt(x.p,0)+' s':'')+'; viento '+x.relation+'</p>').join('')+'<small>Es una clasificación meteorológica aproximada, no una autorización para salir. No detecta con fiabilidad rompiente, corrientes, marea ni cambios locales; comprueba el mar desde la orilla y no salgas si hay dudas.</small>';
+ box.innerHTML='<strong>Comparación automática de horas diurnas · '+sel.value+'</strong><p class="profile">Solo se comparan horas con luz natural, según el amanecer y el atardecer previstos para la ubicación; si esos datos faltan, se usa como alternativa aproximada el horario 07:00–21:00. Orden orientativo según viento, rachas, altura y periodo de ola y, cuando está disponible, dirección del viento respecto a la playa.</p>'+top.map((x,j)=>'<p><strong>'+(j+1)+'. '+x.dt.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+x.dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong><br>'+level(x.score)+' · índice comparativo '+x.score+'/100<br>Viento '+fmt(x.w,1)+' kn; rachas '+fmt(x.g,1)+' kn; olas '+fmt(x.h,2)+' m'+(valid(x.p)?'; periodo '+fmt(x.p,0)+' s':'')+'; viento '+x.relation+'</p>').join('')+'<small>Es una clasificación meteorológica aproximada, no una autorización para salir. No detecta con fiabilidad rompiente, corrientes, marea ni cambios locales; comprueba el mar desde la orilla y no salgas si hay dudas.</small>';
 }
 function applyForecastHour(index){
  if(!activeForecastData)return;
@@ -214,7 +218,7 @@ async function loadForecastForSelectedBeach(){
  box.textContent='Consultando previsión automática para '+name+'…';hourSelect.disabled=true;
  try{
   const [wr,mr]=await Promise.all([
-   fetch('https://api.open-meteo.com/v1/forecast?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=3'),
+   fetch('https://api.open-meteo.com/v1/forecast?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=3'),
    fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wave_height,wave_direction,wave_period&length_unit=metric&timezone=Europe%2FMadrid&forecast_days=3')
   ]);
   if(!wr.ok||!mr.ok)throw new Error('El servicio de previsión no está disponible ahora.');
@@ -230,6 +234,9 @@ async function loadForecastForSelectedBeach(){
   let nearest=0,nearestDiff=Infinity;
   times.forEach((t,i)=>{
    const dt=new Date(t), date=t.slice(0,10), diff=Math.abs(dt.getTime()-now.getTime());
+   const daily=weather.daily||{};const di=(daily.time||[]).indexOf(date);const rise=di>=0?daily.sunrise?.[di]:null,set=di>=0?daily.sunset?.[di]:null;
+   const daylight=rise&&set?dt>=new Date(rise)&&dt<=new Date(set):(dt.getHours()>=7&&dt.getHours()<21);
+   if(!daylight)return;
    if(diff<nearestDiff){nearestDiff=diff;nearest=i;}
    if(date!==lastDate){const group=document.createElement('optgroup');group.label=date===todayKey?'Hoy · '+date:date;hourSelect.appendChild(group);lastDate=date;}
    const group=hourSelect.lastElementChild;
