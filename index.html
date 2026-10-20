@@ -201,9 +201,9 @@ function summarizeBestHours(){
  candidates.sort((a,b)=>b.score-a.score);
  const top=candidates.slice(0,3);
  if(!top.length){box.textContent='No hay suficientes datos horarios para comparar las próximas horas.';return;}
- const level=s=>s>=78?'Más favorable según la previsión':s>=55?'Condiciones intermedias; precaución':'Poco favorable para principiantes';
- const category=s=>s>=78?'favorable':s>=55?'precaucion':'desfavorable';
- const categoryLabel=k=>k==='favorable'?'Más favorable':k==='precaucion'?'Precaución':'Poco favorable';
+ const level=s=>s>=70?'Favorable':s>=55?'Precaución':s>=40?'Difícil':'No recomendada';
+ const category=s=>s>=70?'favorable':s>=55?'precaucion':s>=40?'dificil':'desfavorable';
+ const categoryLabel=k=>k==='favorable'?'Favorable':k==='precaucion'?'Precaución':k==='dificil'?'Difícil':'No recomendada';
  const ordered=[...candidates].sort((a,b)=>a.dt-b.dt);
  const ranges=[]; let active=null;
  for(const x of ordered){
@@ -227,7 +227,7 @@ function summarizeBestHours(){
   const hours=first.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'–'+last.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
   recommendedHtml='<p><strong>🟢 '+hours+'</strong> · '+recommended.items.length+' '+(recommended.items.length===1?'hora':'horas')+' consecutiva'+(recommended.items.length===1?'':'s')+' · valoración media '+avg+'/100.</p>';
  }
- box.innerHTML='<strong>MEJOR FRANJA PARA SALIR · '+sel.value+'</strong>'+recommendedHtml+'<p class="profile">En el desplegable de horas, el semáforo indica la valoración de cada hora: 🟢 favorable, 🟡 precaución y 🔴 poco favorable.</p><small>Previsión orientativa: no refleja con fiabilidad la rompiente, las corrientes, la marea ni las condiciones exactas de la orilla. Comprueba siempre el mar antes de salir.</small>';
+ box.innerHTML='<strong>MEJOR FRANJA PARA SALIR · '+sel.value+'</strong>'+recommendedHtml+'<p class="profile">En el desplegable de horas, el semáforo indica la valoración de cada hora: 🟢 favorable, 🟡 precaución, 🟠 difícil y 🔴 no recomendada.</p><small>Previsión orientativa: no refleja con fiabilidad la rompiente, las corrientes, la marea ni las condiciones exactas de la orilla. Comprueba siempre el mar antes de salir.</small>';
 }
 function applyForecastHour(index){
  if(!activeForecastData)return;
