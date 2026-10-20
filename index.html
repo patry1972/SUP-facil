@@ -211,20 +211,21 @@ function summarizeBestHours(){
   else {if(active)ranges.push(active);active={kind,items:[x]};}
  }
  if(active)ranges.push(active);
- const rangeHtml=ranges.filter(r=>r.kind==='favorable').map(r=>{
-  const first=r.items[0].dt, last=new Date(r.items[r.items.length-1].dt.getTime()+3600000);
-  const avg=Math.round(r.items.reduce((s,x)=>s+x.score,0)/r.items.length);
+ const recommended=ranges.filter(r=>r.kind==='favorable').sort((a,b)=>{
+  if(b.items.length!==a.items.length)return b.items.length-a.items.length;
+  const avgA=a.items.reduce((sum,x)=>sum+x.score,0)/a.items.length;
+  const avgB=b.items.reduce((sum,x)=>sum+x.score,0)/b.items.length;
+  return avgB-avgA;
+ })[0];
+ let recommendedHtml='<p>No se detecta una franja claramente recomendable para principiantes en las próximas horas diurnas.</p>';
+ if(recommended){
+  const first=recommended.items[0].dt;
+  const last=new Date(recommended.items[recommended.items.length-1].dt.getTime()+3600000);
+  const avg=Math.round(recommended.items.reduce((sum,x)=>sum+x.score,0)/recommended.items.length);
   const hours=first.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'–'+last.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-  return '<p><strong>🟢 '+hours+'</strong><br>'+r.items.length+' '+(r.items.length===1?'hora':'horas')+' consecutiva'+(r.items.length===1?'':'s')+' · índice medio '+avg+'/100</p>';
- }).join('');
- const recommendedRanges=rangeHtml||'<p>No se detectan franjas claramente recomendables para principiantes en las próximas horas diurnas.</p>';
-
- const bestText=bestRun.length>=2
-  ? '<p><strong>Mejor franja: '+bestRun[0].dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'–'+new Date(bestRun[bestRun.length-1].dt.getTime()+3600000).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong> · promedio '+Math.round(bestRun.reduce((s,x)=>s+x.score,0)/bestRun.length)+'/100.</p>'
-  : (bestRun.length===1&&bestRun[0].score>=78
-    ? '<p><strong>Mejor momento: alrededor de las '+bestRun[0].dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong>. No se encuentra una franja favorable de varias horas.</p>'
-    : '<p><strong>No se detecta una franja claramente favorable para principiantes.</strong> Considera otra hora o día y comprueba siempre el mar desde la orilla.</p>');
- box.innerHTML='<strong>FRANJAS MÁS RECOMENDABLES PARA SALIR · '+sel.value+'</strong>'+bestText+'<p class="profile">Se muestran aquí solo las franjas con mejor valoración prevista. En el desplegable de horas, el semáforo indica la valoración de cada hora: 🟢 favorable, 🟡 precaución y 🔴 poco favorable.</p>'+recommendedRanges+'<hr><strong>Las 3 mejores horas</strong>'+top.map((x,j)=>'<p><strong>'+(j+1)+'. '+x.dt.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+x.dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong><br>'+level(x.score)+' · índice comparativo '+x.score+'/100<br>Viento '+fmt(x.w,1)+' kn; rachas '+fmt(x.g,1)+' kn; olas '+fmt(x.h,2)+' m'+(valid(x.p)?'; periodo '+fmt(x.p,0)+' s':'')+'; viento '+x.relation+'</p>').join('')+'<small>Es una clasificación meteorológica aproximada, no una autorización para salir. No detecta con fiabilidad rompiente, corrientes, marea ni cambios locales; comprueba el mar desde la orilla y no salgas si hay dudas.</small>';
+  recommendedHtml='<p><strong>🟢 '+hours+'</strong> · '+recommended.items.length+' '+(recommended.items.length===1?'hora':'horas')+' consecutiva'+(recommended.items.length===1?'':'s')+' · valoración media '+avg+'/100.</p>';
+ }
+ box.innerHTML='<strong>MEJOR FRANJA PARA SALIR · '+sel.value+'</strong>'+recommendedHtml+'<p class="profile">En el desplegable de horas, el semáforo indica la valoración de cada hora: 🟢 favorable, 🟡 precaución y 🔴 poco favorable.</p><small>Previsión orientativa: no refleja con fiabilidad la rompiente, las corrientes, la marea ni las condiciones exactas de la orilla. Comprueba siempre el mar antes de salir.</small>';
 }
 function applyForecastHour(index){
  if(!activeForecastData)return;
