@@ -278,7 +278,31 @@ async function loadForecastForSelectedBeach(){
    if(diff<nearestDiff){nearestDiff=diff;nearest=i;}
    if(date!==lastDate){const group=document.createElement('optgroup');group.label=date===todayKey?'Hoy · '+date:date;hourSelect.appendChild(group);lastDate=date;}
    const group=hourSelect.lastElementChild;
-   const opt=document.createElement('option');opt.value=String(i);opt.textContent=t.slice(11,16);group.appendChild(opt);
+   const opt=document.createElement('option');opt.value=String(i);
+   const mi=mtimes.indexOf(t), wh=weather.hourly||{}, mh=marine.hourly||{};
+   const w=wh.wind_speed_10m?.[i], g=wh.wind_gusts_10m?.[i], wd=wh.wind_direction_10m?.[i];
+   const h=mi>=0?mh.wave_height?.[mi]:undefined, p=mi>=0?mh.wave_period?.[mi]:undefined;
+   const valid=n=>Number.isFinite(n);
+   let score=null;
+   if(valid(w)&&valid(h)){
+    score=100;
+    score-=w<=3?0:w<=4?8:w<=5?18:w<=6?30:w<=8?45:65;
+    const gustDiff=Math.max(0,(valid(g)?g:w)-w);
+    score-=gustDiff<=1?0:gustDiff<=2?5:gustDiff<=3?10:18;
+    score-=h<=.2?0:h<=.3?8:h<=.4?16:h<=.5?25:h<=.7?40:h<=.9?55:70;
+    if(valid(p)&&p>=7&&h>=.4)score-=8;
+    const facing=beachSeaBearing[sel.value];
+    if(valid(wd)&&valid(facing)){
+     const d=angleDiff(wd,facing);
+     score-=d<=45?4:d>=135?22:10;
+    }
+    score=Math.max(0,Math.round(score));
+   }
+   const light=score===null?'⚪':score>=78?'🟢':score>=55?'🟡':'🔴';
+   const status=score===null?'sin datos':score>=78?'más favorable':score>=55?'precaución':'poco favorable';
+   opt.textContent=light+' '+t.slice(11,16)+' · '+status;
+   if(score!==null)opt.title='Índice orientativo '+score+'/100';
+   group.appendChild(opt);
   });
   hourSelect.disabled=false;hourSelect.value=String(nearest);applyForecastHour(nearest);summarizeBestHours();
  }catch(err){
