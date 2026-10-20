@@ -211,19 +211,20 @@ function summarizeBestHours(){
   else {if(active)ranges.push(active);active={kind,items:[x]};}
  }
  if(active)ranges.push(active);
- const rangeHtml=ranges.map(r=>{
+ const rangeHtml=ranges.filter(r=>r.kind==='favorable').map(r=>{
   const first=r.items[0].dt, last=new Date(r.items[r.items.length-1].dt.getTime()+3600000);
   const avg=Math.round(r.items.reduce((s,x)=>s+x.score,0)/r.items.length);
   const hours=first.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'–'+last.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-  return '<p><strong>'+hours+' · '+categoryLabel(r.kind)+'</strong><br>'+r.items.length+' '+(r.items.length===1?'hora':'horas')+' consecutiva'+(r.items.length===1?'':'s')+' · índice medio '+avg+'/100</p>';
+  return '<p><strong>🟢 '+hours+'</strong><br>'+r.items.length+' '+(r.items.length===1?'hora':'horas')+' consecutiva'+(r.items.length===1?'':'s')+' · índice medio '+avg+'/100</p>';
  }).join('');
+ const recommendedRanges=rangeHtml||'<p>No se detectan franjas claramente recomendables para principiantes en las próximas horas diurnas.</p>';
 
  const bestText=bestRun.length>=2
   ? '<p><strong>Mejor franja: '+bestRun[0].dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'–'+new Date(bestRun[bestRun.length-1].dt.getTime()+3600000).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong> · promedio '+Math.round(bestRun.reduce((s,x)=>s+x.score,0)/bestRun.length)+'/100.</p>'
   : (bestRun.length===1&&bestRun[0].score>=78
     ? '<p><strong>Mejor momento: alrededor de las '+bestRun[0].dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong>. No se encuentra una franja favorable de varias horas.</p>'
     : '<p><strong>No se detecta una franja claramente favorable para principiantes.</strong> Considera otra hora o día y comprueba siempre el mar desde la orilla.</p>');
- box.innerHTML='<strong>PREVISIÓN RECOMENDADA POR FRANJAS HORARIAS · '+sel.value+'</strong>'+bestText+'<p class="profile">Franjas consecutivas de luz natural, agrupadas por valoración meteorológica. El índice compara viento, rachas, olas, periodo y dirección del viento cuando hay orientación de playa disponible.</p>'+rangeHtml+'<hr><strong>Las 3 mejores horas</strong>'+top.map((x,j)=>'<p><strong>'+(j+1)+'. '+x.dt.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+x.dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong><br>'+level(x.score)+' · índice comparativo '+x.score+'/100<br>Viento '+fmt(x.w,1)+' kn; rachas '+fmt(x.g,1)+' kn; olas '+fmt(x.h,2)+' m'+(valid(x.p)?'; periodo '+fmt(x.p,0)+' s':'')+'; viento '+x.relation+'</p>').join('')+'<small>Es una clasificación meteorológica aproximada, no una autorización para salir. No detecta con fiabilidad rompiente, corrientes, marea ni cambios locales; comprueba el mar desde la orilla y no salgas si hay dudas.</small>';
+ box.innerHTML='<strong>FRANJAS MÁS RECOMENDABLES PARA SALIR · '+sel.value+'</strong>'+bestText+'<p class="profile">Se muestran aquí solo las franjas con mejor valoración prevista. En el desplegable de horas, el semáforo indica la valoración de cada hora: 🟢 favorable, 🟡 precaución y 🔴 poco favorable.</p>'+recommendedRanges+'<hr><strong>Las 3 mejores horas</strong>'+top.map((x,j)=>'<p><strong>'+(j+1)+'. '+x.dt.toLocaleDateString('es-ES',{weekday:'short',day:'2-digit',month:'2-digit'})+' · '+x.dt.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'</strong><br>'+level(x.score)+' · índice comparativo '+x.score+'/100<br>Viento '+fmt(x.w,1)+' kn; rachas '+fmt(x.g,1)+' kn; olas '+fmt(x.h,2)+' m'+(valid(x.p)?'; periodo '+fmt(x.p,0)+' s':'')+'; viento '+x.relation+'</p>').join('')+'<small>Es una clasificación meteorológica aproximada, no una autorización para salir. No detecta con fiabilidad rompiente, corrientes, marea ni cambios locales; comprueba el mar desde la orilla y no salgas si hay dudas.</small>';
 }
 function applyForecastHour(index){
  if(!activeForecastData)return;
@@ -299,9 +300,8 @@ async function loadForecastForSelectedBeach(){
     score=Math.max(0,Math.round(score));
    }
    const light=score===null?'⚪':score>=78?'🟢':score>=55?'🟡':'🔴';
-   const status=score===null?'sin datos':score>=78?'más favorable':score>=55?'precaución':'poco favorable';
-   opt.textContent=light+' '+t.slice(11,16)+' · '+status;
-   if(score!==null)opt.title='Índice orientativo '+score+'/100';
+   opt.textContent=light+' '+t.slice(11,16);
+   if(score!==null)opt.title=(score>=78?'Más favorable':score>=55?'Precaución':'Poco favorable')+' · índice orientativo '+score+'/100';
    group.appendChild(opt);
   });
   hourSelect.disabled=false;hourSelect.value=String(nearest);applyForecastHour(nearest);summarizeBestHours();
