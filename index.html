@@ -181,7 +181,7 @@ function summarizeBestHours(){
    const hard=ww>10||hh>1.3;
    const bandLevel=x=>hard||x<40?0:x<55?1:x<70?2:3;
    const levelIndex=Math.min(bandLevel(score),bandLevel(entry));
-   candidates.push({i,dt,w,g:valid(g)?g:w,h,p,score:Math.max(0,Math.round(score)),relation});
+   candidates.push({i,dt,w:ww,g:gg,h:hh,p:pp,score:Math.min(score,entry),relation});
  }
  // Buscar la franja diurna consecutiva más favorable antes de ordenar por puntuación.
  const chronological=[...candidates].sort((a,b)=>a.dt-b.dt);
