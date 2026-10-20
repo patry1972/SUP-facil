@@ -138,6 +138,7 @@ async function loadForecastForSelectedBeach(){
   if(valid(wind)){
    currentWindUnit='kn';
    $('windunit').value='kn';
+   $('windunit').dispatchEvent(new Event('change'));
    $('wind').value=Math.max(0,Math.min(15,Math.round(wind*2)/2));
    $('gust').value=Math.max(0,Math.min(20,Math.round((valid(gust)?gust:wind)*2)/2));
    updateWindLabels();
@@ -157,6 +158,7 @@ async function loadForecastForSelectedBeach(){
   box.textContent='No se pudo cargar la previsión automática ('+(err?.message||'error de conexión')+'). Comprueba la conexión y vuelve a seleccionar la playa; puedes introducir los datos manualmente.';
  }
 }
+loadForecastForSelectedBeach();
 $('windunit').addEventListener('change',()=>{const oldW=windToKn(+$('wind').value),oldG=windToKn(+$('gust').value);currentWindUnit=$('windunit').value;const ms=currentWindUnit==='ms';$('wind').max=ms?'7.5':'15';$('wind').step=ms?'0.01':'0.5';$('gust').max=ms?'10.3':'20';$('gust').step=ms?'0.01':'0.5';$('wind').value=Math.min(+$('wind').max,ms?oldW/KN_PER_MS:oldW);$('gust').value=Math.min(+$('gust').max,ms?oldG/KN_PER_MS:oldG);$('windticks').innerHTML=ms?'<span>0</span><span>2,5</span><span>5</span><span>7,5 m/s</span>':'<span>0</span><span>5</span><span>10</span><span>15 kn</span>';$('gustticks').innerHTML=ms?'<span>0</span><span>2,5</span><span>5</span><span>7,5</span><span>10,3 m/s</span>':'<span>0</span><span>5</span><span>10</span><span>15</span><span>20 kn</span>';updateWindLabels()});
 ['wind','gust'].forEach(id=>$(id).addEventListener('input',updateWindLabels));
 ['wave','period','energy'].forEach(id=>$(id).addEventListener('input',()=>{$(id+'v').textContent=id==='wave'?fmt($(id).value,1)+' m':id==='period'?$(id).value+' s':fmt($(id).value,0)+' kJ'}));
