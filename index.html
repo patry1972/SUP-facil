@@ -172,12 +172,13 @@ async function searchOtherBeach(){
     temporaryBeachNames=[name];
     beaches[name]={note:'Consulta temporal · ubicación sin validar',detail:'Ubicación localizada mediante búsqueda geográfica. La orientación, la exposición, las corrientes, la marea y la dificultad de entrada/salida no están verificadas. La valoración es orientativa y prudente: comprueba el mar real desde la orilla.',risk:1};
     beachCoords[name]=[item.latitude,item.longitude];beachProvince[name]=item.admin1||'Consulta temporal';
+    if(mapReady&&beachMap){refreshMarker(name);beachMarkers[name].bindPopup('<strong>'+name+'</strong><br>Consulta temporal · ubicación pendiente de validar.');}
     const group=document.createElement('optgroup');group.label='Consulta temporal (no guardada)';
     const opt=document.createElement('option');opt.value=name;opt.textContent=name;group.appendChild(opt);sel.appendChild(group);sel.value=name;
     const exp=document.querySelector('input[name="exposure"][value="exposed"]');if(exp)exp.checked=true;
     results.innerHTML='<p class="notice">Playa seleccionada. Cargando previsión automática… La orientación y el acceso no están validados, así que interpreta el semáforo con especial prudencia.</p>';
     sel.dispatchEvent(new Event('change'));
-    if(mapReady&&beachMap){beachMap.setView(beachCoords[name],12);setTimeout(()=>beachMap.invalidateSize(),100);}
+    if(mapReady&&beachMap){refreshMarker(name);beachMap.setView(beachCoords[name],12);if(beachMarkers[name])beachMarkers[name].openPopup();setTimeout(()=>beachMap.invalidateSize(),100);}
    });
    results.appendChild(choice);
   });
@@ -296,8 +297,9 @@ function summarizeBestHours(){
   const first=recommended.items[0].dt;
   const last=new Date(recommended.items[recommended.items.length-1].dt.getTime()+3600000);
   const avg=Math.round(recommended.items.reduce((sum,x)=>sum+x.score,0)/recommended.items.length);
+  const dateLabel=first.toLocaleDateString('es-ES',{weekday:'long',day:'2-digit',month:'2-digit'});
   const hours=first.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})+'–'+last.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
-  recommendedHtml='<p><strong>🟢 '+hours+'</strong> · '+recommended.items.length+' '+(recommended.items.length===1?'hora':'horas')+' consecutiva'+(recommended.items.length===1?'':'s')+' · valoración media '+avg+'/100.</p>';
+  recommendedHtml='<p><strong>🟢 '+dateLabel+' · '+hours+'</strong> · '+recommended.items.length+' '+(recommended.items.length===1?'hora':'horas')+' consecutiva'+(recommended.items.length===1?'':'s')+' · valoración media '+avg+'/100.</p>';
  }
  box.innerHTML='<strong>MEJOR FRANJA PARA SALIR · '+sel.value+'</strong>'+recommendedHtml+'<p class="profile">En el desplegable de horas, el semáforo indica la valoración de cada hora: 🟢 favorable, 🟡 precaución, 🟠 difícil y 🔴 no recomendada.</p><small>Previsión orientativa: no refleja con fiabilidad la rompiente, las corrientes, la marea ni las condiciones exactas de la orilla. Comprueba siempre el mar antes de salir.</small>';
 }
