@@ -119,32 +119,59 @@ async function searchOtherBeach(){
  const input=$('otherBeachQuery'), results=$('otherBeachResults'), button=$('searchOtherBeach');
  const query=input.value.trim();
  if(!query){results.innerHTML='<p class="notice">Escribe el nombre de la playa y, si puedes, la localidad o provincia.</p>';return;}
- button.disabled=true;results.innerHTML='<p class="notice">Buscando la ubicación…</p>';
+ button.disabled=true;results.innerHTML='<p class="notice">Buscando playas y lugares cercanos…</p>';
  try{
-  const response=await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(query)+'&count=8&language=es&format=json');
-  if(!response.ok)throw new Error('El buscador no está disponible ahora.');
-  const data=await response.json(), items=(data.results||[]).filter(x=>Number.isFinite(x.latitude)&&Number.isFinite(x.longitude));
-  if(!items.length){results.innerHTML='<p class="notice">No encuentro esa ubicación. Prueba con el nombre de la playa y la localidad o municipio.</p>';return;}
-  results.innerHTML='';
+  let items=[];
+  // Primero buscar en OpenStreetMap, que incluye playas y puntos de interés; Open-Meteo suele buscar poblaciones.
+  try{
+   const q=query+( /\\b(españa|spain)\\b/i.test(query)?'':', España');
+   const url='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=8&q='+encodeURIComponent(q);
+   const response=await fetch(url,{headers:{'Accept-Language':'es'}});
+   if(response.ok){
+    const data=await response.json();
+    items=(data||[]).filter(x=>Number.isFinite(Number(x.lat))&&Number.isFinite(Number(x.lon))).map(x=>({
+     name:x.name||String(x.display_name||'Ubicación').split(',')[0],
+     admin1:(x.address&&(x.address.state||x.address.province||x.address.region))||'',
+     country:(x.address&&x.address.country)||'España',
+     latitude:Number(x.lat),longitude:Number(x.lon),
+     label:x.display_name||x.name||'Ubicación encontrada',
+     source:'OpenStreetMap'
+    }));
+   }
+  }catch(e){}
+  // Si el buscador de playas no encuentra nada, probar el geocodificador de Open-Meteo.
+  if(!items.length){
+   const response=await fetch('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(query)+'&count=8&language=es&format=json');
+   if(!response.ok)throw new Error('El buscador no está disponible ahora.');
+   const data=await response.json();
+   items=(data.results||[]).filter(x=>Number.isFinite(x.latitude)&&Number.isFinite(x.longitude)).map(x=>({
+    name:x.name,admin1:x.admin1||'',country:x.country||'',latitude:x.latitude,longitude:x.longitude,
+    label:[x.name,x.admin2,x.admin1,x.country].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(', '),
+    source:'Open-Meteo'
+   }));
+  }
+  if(!items.length){results.innerHTML='<p class="notice">No encuentro esa playa. Prueba con el nombre y el municipio (por ejemplo, «Bolonia, Tarifa» o «Calabajío, Almuñécar»).</p>';return;}
+  results.innerHTML='<p class="profile">Elige el resultado que corresponda a la playa. Comprueba el municipio antes de seleccionarlo.</p>';
   items.forEach(item=>{
-   const label=[item.name,item.admin2,item.admin1,item.country].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
-   const choice=document.createElement('button');choice.type='button';choice.className='secondary';choice.style.cssText='background:#e7f2ed;color:#145b50;border:1px solid #c7ddd3;text-align:left;margin:0;padding:11px;font-size:14px';choice.textContent=label;
+   const label=item.label||[item.name,item.admin1,item.country].filter(Boolean).join(', ');
+   const choice=document.createElement('button');choice.type='button';choice.className='secondary';choice.style.cssText='background:#e7f2ed;color:#145b50;border:1px solid #c7ddd3;text-align:left;margin:0;padding:11px;font-size:14px';
+   choice.textContent=label;
    choice.addEventListener('click',()=>{
     const name='Consulta temporal: '+item.name+' ('+[item.admin1,item.country].filter(Boolean).join(', ')+')';
     temporaryBeachNames.forEach(oldName=>{const opt=[...sel.options].find(o=>o.value===oldName);if(opt)opt.remove();delete beaches[oldName];delete beachCoords[oldName];delete beachProvince[oldName];delete beachSeaBearing[oldName];});
     temporaryBeachNames=[name];
-    beaches[name]={note:'Consulta temporal · ubicación sin validar',detail:'Playa localizada mediante búsqueda geográfica. La orientación, la exposición, las corrientes, la marea y la dificultad de entrada/salida no están verificadas. Se aplicará una valoración prudente y debes comprobar el mar real desde la orilla.',risk:1};
+    beaches[name]={note:'Consulta temporal · ubicación sin validar',detail:'Ubicación localizada mediante búsqueda geográfica. La orientación, la exposición, las corrientes, la marea y la dificultad de entrada/salida no están verificadas. La valoración es orientativa y prudente: comprueba el mar real desde la orilla.',risk:1};
     beachCoords[name]=[item.latitude,item.longitude];beachProvince[name]=item.admin1||'Consulta temporal';
     const group=document.createElement('optgroup');group.label='Consulta temporal (no guardada)';
     const opt=document.createElement('option');opt.value=name;opt.textContent=name;group.appendChild(opt);sel.appendChild(group);sel.value=name;
     const exp=document.querySelector('input[name="exposure"][value="exposed"]');if(exp)exp.checked=true;
-    results.innerHTML='<p class="notice">Playa seleccionada. Cargando previsión automática… Como su orientación y acceso no están validados, interpreta el semáforo con especial prudencia.</p>';
+    results.innerHTML='<p class="notice">Playa seleccionada. Cargando previsión automática… La orientación y el acceso no están validados, así que interpreta el semáforo con especial prudencia.</p>';
     sel.dispatchEvent(new Event('change'));
     if(mapReady&&beachMap){beachMap.setView(beachCoords[name],12);setTimeout(()=>beachMap.invalidateSize(),100);}
    });
    results.appendChild(choice);
   });
- }catch(error){results.innerHTML='<p class="notice">No se pudo buscar la playa. Comprueba la conexión o prueba con otro nombre.</p>';}
+ }catch(error){results.innerHTML='<p class="notice">No se pudo buscar la playa ahora. Comprueba la conexión e inténtalo de nuevo.</p>';}
  finally{button.disabled=false;}
 }
 $('searchOtherBeach').addEventListener('click',searchOtherBeach);
