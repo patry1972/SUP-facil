@@ -4,98 +4,29 @@
   "version": 2,
   "exportedAt": "2026-10-14T13:56:01.817Z",
   "coordinates": {
-    "Las Doradas": [
-      36.504087,
-      -4.669086
-    ],
-    "Torre del Pino": [
-      36.746443,
-      -3.800051
-    ],
-    "La Herradura / Cotobro": [
-      36.737388,
-      -3.748645
-    ],
-    "Marina del Este": [
-      36.72305,
-      -3.728075
-    ],
-    "Punta de la Mona": [
-      36.727975,
-      -3.735479
-    ],
-    "Playa de Calabajío (Almuñécar)": [
-      36.746503,
-      -3.656868
-    ],
-    "Playa Cabria": [
-      36.745412,
-      -3.651665
-    ],
-    "Las Alberquillas (Maro)": [
-      36.747802,
-      -3.803509
-    ],
-    "Los Boliches (Fuengirola)": [
-      36.5514,
-      -4.6151
-    ],
-    "El Bombo (Mijas)": [
-      36.501512,
-      -4.679224
-    ],
-    "Maro (Málaga)": [
-      36.7527,
-      -3.835
-    ],
-    "Cala Murada (Mallorca)": [
-      39.4516,
-      3.277275
-    ],
-    "Cala San Vicent": [
-      39.9225,
-      3.055
-    ],
-    "Cala Serena": [
-      39.3724,
-      3.238
-    ],
-    "Caló des Borgit": [
-      39.3626,
-      3.2026
-    ],
-    "Cala Torta": [
-      39.7506,
-      3.418048
-    ],
-    "Cala Bota": [
-      39.47531,
-      3.286237
-    ],
-    "Cala Mitjana": [
-      39.752204,
-      3.413992
-    ],
-    "Portocolom": [
-      39.418,
-      3.258
-    ],
-    "Playa del Castillo (Fuengirola)": [
-      36.524726,
-      -4.626702
-    ],
-    "Playa del Cañuelo": [
-      36.744772,
-      -3.790444
-    ],
-    "Cala Domingos": [
-      39.456664,
-      3.277588
-    ],
-    "Playa Cabopino": [
-      36.48414,
-      -4.741936
-    ]
+    "Las Doradas": [36.504087, -4.669086],
+    "Torre del Pino": [36.746443, -3.800051],
+    "La Herradura / Cotobro": [36.737388, -3.748645],
+    "Marina del Este": [36.72305, -3.728075],
+    "Punta de la Mona": [36.727975, -3.735479],
+    "Playa de Calabajío (Almuñécar)": [36.746503, -3.656868],
+    "Playa Cabria": [36.745412, -3.651665],
+    "Las Alberquillas (Maro)": [36.747802, -3.803509],
+    "Los Boliches (Fuengirola)": [36.5514, -4.6151],
+    "El Bombo (Mijas)": [36.501512, -4.679224],
+    "Maro (Málaga)": [36.7527, -3.835],
+    "Cala Murada (Mallorca)": [39.4516, 3.277275],
+    "Cala San Vicent": [39.9225, 3.055],
+    "Cala Serena": [39.3724, 3.238],
+    "Caló des Borgit": [39.3626, 3.2026],
+    "Cala Torta": [39.7506, 3.418048],
+    "Cala Bota": [39.47531, 3.286237],
+    "Cala Mitjana": [39.752204, 3.413992],
+    "Portocolom": [39.418, 3.258],
+    "Playa del Castillo (Fuengirola)": [36.524726, -4.626702],
+    "Playa del Cañuelo": [36.744772, -3.790444],
+    "Cala Domingos": [39.456664, 3.277588],
+    "Playa Cabopino": [36.48414, -4.741936]
   },
   "addedBeaches": {}
 }
