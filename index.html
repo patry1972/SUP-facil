@@ -117,9 +117,9 @@ function updateWindMap(name,wind,dir,gust,stamp){
  if(seaBearing!==null){
   const point=windDestination(coords,seaBearing,260);
   windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
-  const labelPoint=windDestination(point,(seaBearing+90)%360,105);
+  const labelPoint=point;
   const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
-  const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label">Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn</div>',iconSize:[112,42],iconAnchor:[0,21]});
+  const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label">Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn</div>',iconSize:[112,42],iconAnchor:[-34,21]});
   windMapLabel=L.marker(labelPoint,{icon:labelIcon,interactive:false,zIndexOffset:2001,pane}).addTo(beachMap);
  }
 }
