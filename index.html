@@ -116,7 +116,7 @@ function updateWindMap(name,wind,dir,gust,stamp){
  const arrowIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
  if(seaBearing!==null){
   const arrowBearing=name==="Los Boliches (Fuengirola)"?180:seaBearing;
-  const arrowDistance=name==="Los Boliches (Fuengirola)"?480:260;
+  const arrowDistance=name==="Los Boliches (Fuengirola)"?750:450;
   const point=windDestination(coords,arrowBearing,arrowDistance);
   windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
   const labelPoint=point;
