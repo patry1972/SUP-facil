@@ -114,16 +114,17 @@ function updateWindMap(name,wind,dir,gust,stamp){
  if(!beachMap.getPane(pane)){beachMap.createPane(pane);beachMap.getPane(pane).style.zIndex=650;beachMap.getPane(pane).style.pointerEvents='none';}
  const seaBearing=Number.isFinite(beachSeaBearing?.[name])?beachSeaBearing[name]:null;
  const arrowIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
+ let point=coords;
  if(seaBearing!==null){
   const arrowBearing=name==="Los Boliches (Fuengirola)"?180:seaBearing;
   const arrowDistance=name==="Los Boliches (Fuengirola)"?750:450;
-  const point=windDestination(coords,arrowBearing,arrowDistance);
-  windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
-  const labelPoint=point;
-  const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
-  const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label">Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn</div>',iconSize:[104,40],iconAnchor:[-28,20]});
-  windMapLabel=L.marker(labelPoint,{icon:labelIcon,interactive:false,zIndexOffset:2001,pane}).addTo(beachMap);
+  point=windDestination(coords,arrowBearing,arrowDistance);
  }
+ windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
+ const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
+ const orientationNote=seaBearing===null?'<br><small>Posición orientativa</small>':'';
+ const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label">Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn'+orientationNote+'</div>',iconSize:[116,48],iconAnchor:[-28,24]});
+ windMapLabel=L.marker(point,{icon:labelIcon,interactive:false,zIndexOffset:2001,pane}).addTo(beachMap);
 }
 
 const LOCATION_STORAGE_KEY='supfacil_corrected_beach_locations_v1';
