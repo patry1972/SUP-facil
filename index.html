@@ -106,7 +106,7 @@ function windDestination(latlng,bearing,distance){
 function updateWindMap(name,wind,dir,gust,stamp){
  if(!beachMap||!window.L||!beachCoords[name])return;
  windMapArrow.forEach(layer=>beachMap.removeLayer(layer));windMapArrow=[];
- if(windMapLabel){beachMap.removeLayer(windMapLabel);windMapLabel=null;}
+ if(windMapLabel){beachMap.removeControl(windMapLabel);windMapLabel=null;}
  if(!Number.isFinite(Number(wind))||!Number.isFinite(Number(dir)))return;
  wind=Number(wind);dir=Number(dir);gust=Number(gust);
  const coords=beachCoords[name],angle=(dir+180)%360;
