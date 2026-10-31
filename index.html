@@ -103,9 +103,11 @@ let beachMap=null,beachMarkers={},mapReady=false,editingLocation=false,addingBea
 let windMapArrow=[],windMapLabel=null;
 const WIND_INFO_VISIBILITY_KEY='supfacil_wind_info_visible_v1';
 let showWindInfo=true;
-try{const savedVisibility=localStorage.getItem(WIND_INFO_VISIBILITY_KEY);if(savedVisibility!==null)showWindInfo=savedVisibility==='true';}catch(e){}
+function readWindInfoVisibility(name){try{const saved=localStorage.getItem(WIND_INFO_VISIBILITY_KEY+':'+name);return saved===null?true:saved==='true';}catch(e){return true;}}
+function loadWindInfoVisibility(name){showWindInfo=readWindInfoVisibility(name);refreshWindInfoButton();}
+try{showWindInfo=readWindInfoVisibility(sel.value);}catch(e){}
 function refreshWindInfoButton(){const button=$('toggleWindInfo');if(button)button.textContent=showWindInfo?'Ocultar datos del viento':'Mostrar datos del viento';}
-function toggleWindInfo(){showWindInfo=!showWindInfo;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY,String(showWindInfo));}catch(e){}if(!showWindInfo&&windMapLabel&&beachMap){beachMap.removeLayer(windMapLabel);windMapLabel=null;}else if(showWindInfo&&activeWindMapData){const d=activeWindMapData;updateWindMap(d.name,d.wind,d.dir,d.gust,d.stamp);}refreshWindInfoButton();}
+function toggleWindInfo(){showWindInfo=!showWindInfo;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+sel.value,String(showWindInfo));}catch(e){}if(!showWindInfo&&windMapLabel&&beachMap){beachMap.removeLayer(windMapLabel);windMapLabel=null;}else if(showWindInfo&&activeWindMapData){const d=activeWindMapData;updateWindMap(d.name,d.wind,d.dir,d.gust,d.stamp);}refreshWindInfoButton();}
 let activeWindMapData=null;
 function windDestination(latlng,bearing,distance){
  const R=6371000,br=bearing*Math.PI/180,lat1=latlng[0]*Math.PI/180,lon1=latlng[1]*Math.PI/180,d=distance/R;
@@ -134,7 +136,7 @@ function updateWindMap(name,wind,dir,gust,stamp){
  const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
  const orientationNote=seaBearing===null?'<br><small>Posición orientativa</small>':'';
  const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label"><button type="button" class="wind-map-close" aria-label="Cerrar datos del viento" title="Ocultar datos del viento">×</button><span>Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn'+orientationNote+'</span></div>',iconSize:[142,54],iconAnchor:[-28,27]});
- if(showWindInfo){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);showWindInfo=false;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY,'false');}catch(err){}if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
+ if(showWindInfo){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);showWindInfo=false;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+name,'false');}catch(err){}if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
  refreshWindInfoButton();
 }
 
@@ -268,7 +270,7 @@ async function searchOtherBeach(){
 }
 $('searchOtherBeach').addEventListener('click',searchOtherBeach);
 $('otherBeachQuery').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchOtherBeach();}});
-function profile(){const b=beaches[sel.value];$('profile').innerHTML='<strong>'+b.note+'</strong><br>'+b.detail+'<br><em>Registro orientativo; las condiciones cambian con la hora y la meteorología.</em>'}sel.addEventListener('change',()=>{profile();refreshFavoriteControls();focusBeachOnMap();if(typeof loadForecastForSelectedBeach==='function')loadForecastForSelectedBeach();});profile();try{initBeachMap()}catch(mapError){const mapBox=$('beachmap');if(mapBox)mapBox.innerHTML='<p class="notice">No se ha podido iniciar el mapa; la previsión automática puede seguir funcionando.</p>';}
+function profile(){const b=beaches[sel.value];$('profile').innerHTML='<strong>'+b.note+'</strong><br>'+b.detail+'<br><em>Registro orientativo; las condiciones cambian con la hora y la meteorología.</em>'}sel.addEventListener('change',()=>{loadWindInfoVisibility(sel.value);profile();refreshFavoriteControls();focusBeachOnMap();if(typeof loadForecastForSelectedBeach==='function')loadForecastForSelectedBeach();});profile();try{initBeachMap()}catch(mapError){const mapBox=$('beachmap');if(mapBox)mapBox.innerHTML='<p class="notice">No se ha podido iniciar el mapa; la previsión automática puede seguir funcionando.</p>';}
 const fmt=(n,d=0)=>Number(n).toLocaleString('es-ES',{maximumFractionDigits:d,minimumFractionDigits:d});
 const KN_PER_MS=1.943844492;let currentWindUnit='kn';
 function windToKn(value){return currentWindUnit==='ms'?value*KN_PER_MS:value}
