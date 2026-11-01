@@ -414,13 +414,15 @@ function applyForecastHour(index){
  const swellH=componentValue('swell_wave_height'),swellP=componentValue('swell_wave_period'),windWaveH=componentValue('wind_wave_height'),windWaveP=componentValue('wind_wave_period');
  const secondaryH=componentValue('secondary_swell_wave_height'),secondaryP=componentValue('secondary_swell_wave_period'),tertiaryH=componentValue('tertiary_swell_wave_height'),tertiaryP=componentValue('tertiary_swell_wave_period');
  const componentText=(h,p)=>valid(h)&&valid(p)?fmt(h,2)+' m · '+fmt(p,1)+' s':'sin dato';
- const componentInfo='Mar de fondo: '+componentText(swellH,swellP)+' · mar de viento: '+componentText(windWaveH,windWaveP)+' · fondo secundario: '+componentText(secondaryH,secondaryP)+' · fondo terciario: '+componentText(tertiaryH,tertiaryP);
+ const wavePeakP=componentValue('wave_peak_period'),swellPeakP=componentValue('swell_wave_peak_period'),windWavePeakP=componentValue('wind_wave_peak_period');
+ const peakText=p=>valid(p)?fmt(p,1)+' s':'sin dato';
+ const componentInfo='Mar de fondo: '+componentText(swellH,swellP)+' · periodo de pico '+peakText(swellPeakP)+' · mar de viento: '+componentText(windWaveH,windWaveP)+' · periodo de pico '+peakText(windWavePeakP)+' · fondo secundario: '+componentText(secondaryH,secondaryP)+' · fondo terciario: '+componentText(tertiaryH,tertiaryP)+' · periodo de pico total: '+peakText(wavePeakP);
  updateWindRelation(windDir);
  updateWindMap(sel.value,wind,windDir,gust,stamp);
  const box=$('forecastStatus');
  const wdText=valid(windDir)?compassLabel(windDir)+' ('+Math.round(windDir)+'°)':'sin dato';
  const waveDirText=valid(waveDir)?compassLabel(waveDir)+' ('+Math.round(waveDir)+'°)':'sin dato';
- box.innerHTML='<strong>Previsión automática · '+sel.value+'</strong><br>Hora consultada: '+stamp.replace('T',' ')+'<br>Viento: '+(valid(wind)?fmt(wind,1)+' kn':'sin dato')+' · rachas: '+(valid(gust)?fmt(gust,1)+' kn':'sin dato')+' · dirección: '+wdText+'<br>Olas: '+(valid(wave)?fmt(wave,2)+' m':'sin dato')+' · periodo: '+(valid(period)?fmt(period,0)+' s':'sin dato')+' · dirección: '+waveDirText+'<br><small>'+componentInfo+'</small><br><small>Fuente: Open-Meteo Marine. Componentes separados del oleaje cuando el modelo los ofrece. La energía mostrada sigue siendo la estimación experimental anterior basada en altura total y periodo total; todavía no suma los componentes. No es una medición oficial de kJ. Comprueba siempre la rompiente y las condiciones reales.</small>';
+ box.innerHTML='<strong>Previsión automática · '+sel.value+'</strong><br>Hora consultada: '+stamp.replace('T',' ')+'<br>Viento: '+(valid(wind)?fmt(wind,1)+' kn':'sin dato')+' · rachas: '+(valid(gust)?fmt(gust,1)+' kn':'sin dato')+' · dirección: '+wdText+'<br>Olas: '+(valid(wave)?fmt(wave,2)+' m':'sin dato')+' · periodo: '+(valid(period)?fmt(period,0)+' s':'sin dato')+' · dirección: '+waveDirText+'<br><small>'+componentInfo+'</small><br><small>Fuente: Open-Meteo Marine. Componentes separados del oleaje cuando el modelo los ofrece. También se muestran los periodos de pico total, de fondo y de viento cuando el modelo los ofrece. La energía sigue siendo la estimación experimental anterior basada en altura total y periodo medio; los nuevos periodos aún no intervienen en el cálculo. No es una medición oficial de kJ. Comprueba siempre la rompiente y las condiciones reales.</small>';
  $('hourlyNote').textContent='Datos actualizados para '+stamp.replace('T',' ')+'. Elige otra hora para comparar cómo cambia la previsión. La recomendación seguirá siendo orientativa.';
  calculateSemaforo();
 }
@@ -432,7 +434,7 @@ async function loadForecastForSelectedBeach(){
  try{
   const [wr,mr]=await Promise.all([
    fetch('https://api.open-meteo.com/v1/forecast?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=3'),
-   fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wave_height,wave_direction,wave_period,wind_wave_height,wind_wave_direction,wind_wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,secondary_swell_wave_height,secondary_swell_wave_direction,secondary_swell_wave_period,tertiary_swell_wave_height,tertiary_swell_wave_direction,tertiary_swell_wave_period&length_unit=metric&timezone=Europe%2FMadrid&forecast_days=3')
+   fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wave_height,wave_direction,wave_period,wave_peak_period,wind_wave_height,wind_wave_direction,wind_wave_period,wind_wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,swell_wave_peak_period,secondary_swell_wave_height,secondary_swell_wave_direction,secondary_swell_wave_period,tertiary_swell_wave_height,tertiary_swell_wave_direction,tertiary_swell_wave_period&length_unit=metric&timezone=Europe%2FMadrid&forecast_days=3')
   ]);
   if(!wr.ok||!mr.ok)throw new Error('El servicio de previsión no está disponible ahora.');
   const weather=await wr.json(), marine=await mr.json();
