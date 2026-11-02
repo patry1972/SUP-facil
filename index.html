@@ -311,6 +311,16 @@ function updateWindRelation(windDir){
 }
 function estimateWaveEnergyKj(height,period){if(!Number.isFinite(height)||!Number.isFinite(period)||height<=0||period<=0)return null;return Math.max(0,Math.round(0.981*height*height*period*period));}
 function setEstimatedEnergy(height,period){const value=estimateWaveEnergyKj(height,period);if(value===null){$("energy").value=0;$("energyv").textContent="Sin datos";return null;}const shown=Math.min(150,value);$("energy").value=shown;$("energyv").textContent=(value>150?">150":shown)+" kJ aprox.";return value;}
+function estimateComponentIndex(components,usePeakPeriods=false){
+ let total=0,count=0;
+ for(const c of components){
+  if(!Number.isFinite(c.height)||!Number.isFinite(c.period)||c.height<=0||c.period<=0)continue;
+  const period=usePeakPeriods&&Number.isFinite(c.peakPeriod)&&c.peakPeriod>0?c.peakPeriod:c.period;
+  total+=0.981*c.height*c.height*period*period;
+  count++;
+ }
+ return count?Math.round(total*10)/10:null;
+}
 let forecastRequestId=0, activeForecastData=null, activeWaveDirection=null;
 function summarizeBestHours(){
  const box=$('bestHours'); if(!box||!activeForecastData)return;
@@ -417,12 +427,16 @@ function applyForecastHour(index){
  const wavePeakP=componentValue('wave_peak_period'),swellPeakP=componentValue('swell_wave_peak_period'),windWavePeakP=componentValue('wind_wave_peak_period');
  const peakText=p=>valid(p)?fmt(p,1)+' s':'sin dato';
  const componentInfo='Mar de fondo: '+componentText(swellH,swellP)+' · periodo de pico '+peakText(swellPeakP)+' · mar de viento: '+componentText(windWaveH,windWaveP)+' · periodo de pico '+peakText(windWavePeakP)+' · fondo secundario: '+componentText(secondaryH,secondaryP)+' · fondo terciario: '+componentText(tertiaryH,tertiaryP)+' · periodo de pico total: '+peakText(wavePeakP);
+ const energyComponents=[{height:swellH,period:swellP,peakPeriod:swellPeakP},{height:windWaveH,period:windWaveP,peakPeriod:windWavePeakP},{height:secondaryH,period:secondaryP},{height:tertiaryH,period:tertiaryP}];
+ const componentMeanIndex=estimateComponentIndex(energyComponents,false);
+ const componentPeakIndex=estimateComponentIndex(energyComponents,true);
+ const energyComparison='Comparación experimental (índices, no kJ físicos; no modifica el semáforo): cálculo actual con ola total '+(estimatedEnergy===null?'sin datos':estimatedEnergy)+' · suma por componentes con periodos medios '+(componentMeanIndex===null?'sin datos':componentMeanIndex)+' · suma usando periodos pico disponibles '+(componentPeakIndex===null?'sin datos':componentPeakIndex)+'.';
  updateWindRelation(windDir);
  updateWindMap(sel.value,wind,windDir,gust,stamp);
  const box=$('forecastStatus');
  const wdText=valid(windDir)?compassLabel(windDir)+' ('+Math.round(windDir)+'°)':'sin dato';
  const waveDirText=valid(waveDir)?compassLabel(waveDir)+' ('+Math.round(waveDir)+'°)':'sin dato';
- box.innerHTML='<strong>Previsión automática · '+sel.value+'</strong><br>Hora consultada: '+stamp.replace('T',' ')+'<br>Viento: '+(valid(wind)?fmt(wind,1)+' kn':'sin dato')+' · rachas: '+(valid(gust)?fmt(gust,1)+' kn':'sin dato')+' · dirección: '+wdText+'<br>Olas: '+(valid(wave)?fmt(wave,2)+' m':'sin dato')+' · periodo: '+(valid(period)?fmt(period,0)+' s':'sin dato')+' · dirección: '+waveDirText+'<br><small>'+componentInfo+'</small><br><small>Fuente: Open-Meteo Marine. Componentes separados del oleaje cuando el modelo los ofrece. También se muestran los periodos de pico total, de fondo y de viento cuando el modelo los ofrece. La energía sigue siendo la estimación experimental anterior basada en altura total y periodo medio; los nuevos periodos aún no intervienen en el cálculo. No es una medición oficial de kJ. Comprueba siempre la rompiente y las condiciones reales.</small>';
+ box.innerHTML='<strong>Previsión automática · '+sel.value+'</strong><br>Hora consultada: '+stamp.replace('T',' ')+'<br>Viento: '+(valid(wind)?fmt(wind,1)+' kn':'sin dato')+' · rachas: '+(valid(gust)?fmt(gust,1)+' kn':'sin dato')+' · dirección: '+wdText+'<br>Olas: '+(valid(wave)?fmt(wave,2)+' m':'sin dato')+' · periodo: '+(valid(period)?fmt(period,0)+' s':'sin dato')+' · dirección: '+waveDirText+'<br><small>'+componentInfo+'</small><br><small>'+energyComparison+'</small><br><small>Fuente: Open-Meteo Marine. La comparación suma por separado mar de fondo, mar de viento y trenes secundarios. La variante de picos sustituye el periodo medio por el periodo de pico solo cuando está disponible. Son índices experimentales de comparación, no energía física oficial en kJ. El semáforo y sus umbrales siguen utilizando el cálculo anterior. Comprueba siempre la rompiente y las condiciones reales.</small>';
  $('hourlyNote').textContent='Datos actualizados para '+stamp.replace('T',' ')+'. Elige otra hora para comparar cómo cambia la previsión. La recomendación seguirá siendo orientativa.';
  calculateSemaforo();
 }
