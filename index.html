@@ -125,7 +125,7 @@ function updateWindMap(name,wind,dir,gust,stamp){
  const coords=beachCoords[name],angle=(dir+90)%360;
  const pane='windOverlayPane';
  if(!beachMap.getPane(pane)){beachMap.createPane(pane);beachMap.getPane(pane).style.zIndex=650;beachMap.getPane(pane).style.pointerEvents='auto';}
- const seaBearing=Number.isFinite(beachSeaBearing?.[name])?beachSeaBearing[name]:null;
+ const seaBearing=Number.isFinite(getBeachSeaBearing(name))?getBeachSeaBearing(name):null;
  const arrowIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
  // Colocamos la flecha más mar adentro. En playas sin orientación registrada usamos
  // una posición provisional hacia el sur, habitual en la costa de Málaga.
@@ -295,19 +295,56 @@ const beachSeaBearing={
  "Playa del Castillo (Fuengirola)":205,
  "Cala Murada (Mallorca)":90
 };
+
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
-function assessWaveExposure(name,waveDir){const facing=beachSeaBearing[name];if(!Number.isFinite(waveDir)||!Number.isFinite(facing))return {penalty:0,label:'sin orientación costera disponible'};const diff=angleDiff(waveDir,facing);if(diff<=45)return {penalty:8,label:'oleaje de cara a la costa'};if(diff<=90)return {penalty:4,label:'oleaje oblicuo respecto a la costa'};return {penalty:0,label:'oleaje no directamente enfrentado a la costa'};}
+const COAST_CACHE_KEY='supfacil_osm_coast_orientation_v1';
+let externalCoastBearing={};
+function getBeachSeaBearing(name){return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
+async function loadExternalCoastOrientation(name){
+ const coords=beachCoords[name];if(!coords)return null;
+ try{
+  const cache=JSON.parse(localStorage.getItem(COAST_CACHE_KEY)||'{}'),saved=cache[name];
+  if(saved&&Number.isFinite(saved.bearing)&&Date.now()-saved.time<7*86400000){externalCoastBearing[name]=saved.bearing;return saved.bearing;}
+ }catch(e){}
+ try{
+  const query='[out:json][timeout:8];way(around:1800,'+coords[0]+','+coords[1]+')[natural=coastline];out geom;';
+  const response=await fetch('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(query),{headers:{'Accept':'application/json'}});
+  if(!response.ok)throw new Error('OpenStreetMap no disponible');
+  const data=await response.json();let best=null;
+  const latScale=111320,lonScale=111320*Math.cos(coords[0]*Math.PI/180);
+  const px=coords[1]*lonScale,py=coords[0]*latScale;
+  for(const way of (data.elements||[])){
+   const points=way.geometry||[];
+   for(let i=1;i<points.length;i++){
+    const a=points[i-1],b=points[i];if(!Number.isFinite(a.lat)||!Number.isFinite(a.lon)||!Number.isFinite(b.lat)||!Number.isFinite(b.lon))continue;
+    const ax=a.lon*lonScale,ay=a.lat*latScale,bx=b.lon*lonScale,by=b.lat*latScale,dx=bx-ax,dy=by-ay;
+    const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1)));
+    const distance=Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+    if(!best||distance<best.distance){
+     const bearing=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
+     // En OSM, la costa se digitaliza con tierra a la derecha y mar a la izquierda.
+     best={distance,bearing:(bearing+270)%360};
+    }
+   }
+  }
+  if(!best||best.distance>1200)throw new Error('No hay línea de costa cercana suficiente');
+  externalCoastBearing[name]=best.bearing;
+  try{cache[name]={bearing:best.bearing,time:Date.now()};localStorage.setItem(COAST_CACHE_KEY,JSON.stringify(cache));}catch(e){}
+  return best.bearing;
+ }catch(error){return null;}
+}
+function assessWaveExposure(name,waveDir){const facing=getBeachSeaBearing(name);if(!Number.isFinite(waveDir)||!Number.isFinite(facing))return {penalty:0,label:'protección no determinada',certainty:'unknown'};const diff=angleDiff(waveDir,facing);if(diff<=45)return {penalty:8,label:'oleaje de cara a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};if(diff<=90)return {penalty:4,label:'oleaje oblicuo respecto a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};return {penalty:0,label:'oleaje no directamente enfrentado a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};}
 function updateWindRelation(windDir){
  const note=$('windRelationNote');
  if(!Number.isFinite(windDir)){note.textContent='La previsión no incluye dirección del viento; selecciona la relación manualmente.';return;}
- const facing=beachSeaBearing[sel.value];
+ const facing=getBeachSeaBearing(sel.value);
  if(!Number.isFinite(facing)){document.querySelectorAll('input[name="winddir"]').forEach(r=>r.checked=false);note.textContent='Orientación de esta playa aún no validada: selecciona manualmente si el viento viene del mar, es lateral o viene de tierra. Dirección prevista: '+compassLabel(windDir)+' ('+Math.round(windDir)+'°).';return;}
  const diff=angleDiff(windDir,facing);
  const value=diff<=45?'onshore':diff>=135?'offshore':'cross';
  const radio=document.querySelector('input[name="winddir"][value="'+value+'"]');
  if(radio)radio.checked=true;
  const labels={onshore:'del mar hacia tierra',cross:'lateral a la playa',offshore:'de tierra hacia el mar'};
- note.textContent='Estimación automática para '+sel.value+': viento '+labels[value]+'. Dirección del viento '+compassLabel(windDir)+' ('+Math.round(windDir)+'°); orientación de mar aproximada '+facing+'°. Comprueba la dirección real en la orilla: es una estimación, no una medición local.';
+ note.textContent='Estimación automática para '+sel.value+': viento '+labels[value]+'. Dirección '+compassLabel(windDir)+' ('+Math.round(windDir)+'°); orientación hacia mar '+Math.round(facing)+'° ('+(Number.isFinite(externalCoastBearing[sel.value])?'geometría costera de OpenStreetMap':'orientación aproximada guardada')+'). Comprueba siempre las condiciones reales en la orilla.';
 }
 function estimateWaveEnergyKj(height,period){if(!Number.isFinite(height)||!Number.isFinite(period)||height<=0||period<=0)return null;return Math.max(0,Math.round(0.981*height*height*period*period));}
 function setEstimatedEnergy(height,period){const value=estimateWaveEnergyKj(height,period);if(value===null){$("energy").value=0;$("energyv").textContent="Sin datos";return null;}const shown=Math.min(150,value);$("energy").value=shown;$("energyv").textContent=(value>150?">150":shown)+" kJ aprox.";return value;}
@@ -454,6 +491,8 @@ async function loadForecastForSelectedBeach(){
    fetchForecastJson('la previsión del oleaje',marineUrl)
   ]);
   if(requestId!==forecastRequestId)return;
+  await loadExternalCoastOrientation(name);
+  if(requestId!==forecastRequestId)return;
   const times=weather.hourly?.time||[], mtimes=marine.hourly?.time||[];
   if(!times.length||!mtimes.length)throw new Error('La fuente no ha devuelto datos horarios para esta ubicación.');
   activeForecastData={weather,marine};
@@ -484,7 +523,7 @@ async function loadForecastForSelectedBeach(){
     const gustDiff=Math.max(0,gg-ww), gp=gustDiff<=1?0:gustDiff<=2?2:gustDiff<=3?5:gustDiff<=4?9:14;
     const hp=hh<=.2?0:hh<=.3?2:hh<=.4?5:hh<=.5?8:hh<=.7?13:hh<=.9?20:hh<=1.1?27:30;
     let navScore=Math.max(0,100-wp-gp-hp-(ex==='exposed'?10:ex==='some'?4:0)-(pp>=7&&hh>=.5?4:0));
-    const facing=beachSeaBearing[sel.value];
+    const facing=getBeachSeaBearing(sel.value);
     if(valid(wd)&&valid(facing)){const d=angleDiff(wd,facing);navScore-=d>=135?12:d>45?6:0;}
     navScore=Math.max(0,Math.round(navScore));
     const energyKj=estimateWaveEnergyKj(h,p), energyPenalty=energyKj===null?0:energyKj>=60?30:energyKj>=40?15:energyKj>20?5:0;
