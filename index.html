@@ -270,7 +270,7 @@ async function searchOtherBeach(){
 }
 $('searchOtherBeach').addEventListener('click',searchOtherBeach);
 $('otherBeachQuery').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();searchOtherBeach();}});
-function profile(){const b=beaches[sel.value];$('profile').innerHTML='<strong>'+b.note+'</strong><br>'+b.detail+'<br><em>Registro orientativo; las condiciones cambian con la hora y la meteorología.</em>'}sel.addEventListener('change',()=>{loadWindInfoVisibility(sel.value);profile();refreshFavoriteControls();focusBeachOnMap();if(typeof loadForecastForSelectedBeach==='function')loadForecastForSelectedBeach();});profile();try{initBeachMap()}catch(mapError){const mapBox=$('beachmap');if(mapBox)mapBox.innerHTML='<p class="notice">No se ha podido iniciar el mapa; la previsión automática puede seguir funcionando.</p>';}
+function profile(){const b=beaches[sel.value];$('profile').innerHTML='<strong>'+b.note+'</strong><br>'+b.detail+'<br><em>Registro orientativo; las condiciones cambian con la hora y la meteorología.</em>'}sel.addEventListener('change',()=>{document.querySelectorAll('input[name="exposure"]').forEach(r=>r.checked=false);document.querySelectorAll('input[name="winddir"]').forEach(r=>r.checked=false);loadWindInfoVisibility(sel.value);profile();refreshFavoriteControls();focusBeachOnMap();if(typeof loadForecastForSelectedBeach==='function')loadForecastForSelectedBeach();});profile();try{initBeachMap()}catch(mapError){const mapBox=$('beachmap');if(mapBox)mapBox.innerHTML='<p class="notice">No se ha podido iniciar el mapa; la previsión automática puede seguir funcionando.</p>';}
 const fmt=(n,d=0)=>Number(n).toLocaleString('es-ES',{maximumFractionDigits:d,minimumFractionDigits:d});
 const KN_PER_MS=1.943844492;let currentWindUnit='kn';
 function windToKn(value){return currentWindUnit==='ms'?value*KN_PER_MS:value}
@@ -301,7 +301,7 @@ function updateWindRelation(windDir){
  const note=$('windRelationNote');
  if(!Number.isFinite(windDir)){note.textContent='La previsión no incluye dirección del viento; selecciona la relación manualmente.';return;}
  const facing=beachSeaBearing[sel.value];
- if(!Number.isFinite(facing)){note.textContent='Orientación de esta playa aún no validada: selecciona manualmente si el viento viene del mar, es lateral o viene de tierra. Dirección prevista: '+compassLabel(windDir)+' ('+Math.round(windDir)+'°).';return;}
+ if(!Number.isFinite(facing)){document.querySelectorAll('input[name="winddir"]').forEach(r=>r.checked=false);note.textContent='Orientación de esta playa aún no validada: selecciona manualmente si el viento viene del mar, es lateral o viene de tierra. Dirección prevista: '+compassLabel(windDir)+' ('+Math.round(windDir)+'°).';return;}
  const diff=angleDiff(windDir,facing);
  const value=diff<=45?'onshore':diff>=135?'offshore':'cross';
  const radio=document.querySelector('input[name="winddir"][value="'+value+'"]');
