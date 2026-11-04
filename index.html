@@ -305,7 +305,7 @@ const beachSeaBearing={
 };
 
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
-const COAST_CACHE_KEY='supfacil_osm_coast_orientation_v1';
+const COAST_CACHE_KEY='supfacil_coast_orientation_v2';
 let externalCoastBearing={};
 function getBeachSeaBearing(name){return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
 async function loadExternalCoastOrientation(name){
