@@ -119,14 +119,14 @@ function updateWindMap(name,wind,dir,gust,stamp){
  if(!beachMap||!window.L||!beachCoords[name])return;
  windMapArrow.forEach(layer=>beachMap.removeLayer(layer));windMapArrow=[];
  if(windMapLabel){beachMap.removeLayer(windMapLabel);windMapLabel=null;}
- if(!Number.isFinite(Number(wind))||!Number.isFinite(Number(dir)))return;
- wind=Number(wind);dir=Number(dir);gust=Number(gust);
+ if(!Number.isFinite(Number(wind)))return;
+ wind=Number(wind);dir=Number.isFinite(Number(dir))?Number(dir):null;gust=Number(gust);
  activeWindMapData={name,wind,dir,gust,stamp};
- const coords=beachCoords[name],angle=(dir+90)%360;
+ const coords=beachCoords[name],angle=dir===null?null:(dir+90)%360;
  const pane='windOverlayPane';
  if(!beachMap.getPane(pane)){beachMap.createPane(pane);beachMap.getPane(pane).style.zIndex=650;beachMap.getPane(pane).style.pointerEvents='auto';}
  const seaBearing=getBeachSeaBearing(name);
- const arrowIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
+ const arrowIcon=dir===null?null:L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
  // Si conocemos la orientación de la costa, situamos la flecha sobre el agua.
  // Si aún no la conocemos (o falla el servicio externo), la mostramos junto
  // al punto de la playa para que ninguna playa se quede sin flecha.
@@ -141,10 +141,11 @@ function updateWindMap(name,wind,dir,gust,stamp){
    }
   });
  }
- windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
+ if(arrowIcon)windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
  const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
- const orientationNote=Number.isFinite(seaBearing)?'':'<br><small>Ubicación provisional; ajustando a la costa</small>';
- const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label"><button type="button" class="wind-map-close" aria-label="Cerrar datos del viento" title="Ocultar datos del viento">×</button><span>Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn'+orientationNote+'</span></div>',iconSize:[142,54],iconAnchor:[-28,27]});
+ const directionText=dir===null?'<br>Dirección sin dato':'';
+ const orientationNote=Number.isFinite(seaBearing)?'':'<br><small>Orientación provisional</small>';
+ const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label"><button type="button" class="wind-map-close" aria-label="Cerrar datos del viento" title="Ocultar datos del viento">×</button><span>Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn'+directionText+orientationNote+'</span></div>',iconSize:[150,62],iconAnchor:[-28,31]});
  if(showWindInfo){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);showWindInfo=false;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+name,'false');}catch(err){}if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
  refreshWindInfoButton();
 }
@@ -302,7 +303,15 @@ const beachSeaBearing={
  "Los Boliches (Fuengirola)":205,
  "El Bombo (Mijas)":205,
  "Playa del Castillo (Fuengirola)":205,
- "Cala Murada (Mallorca)":90
+ "Cala Murada (Mallorca)":90,
+ "Cala San Vicent":315,
+ "Cala Serena":90,
+ "Caló des Borgit":135,
+ "Cala Torta":45,
+ "Cala Bota":90,
+ "Cala Mitjana":45,
+ "Portocolom":90,
+ "Cala Domingos":100
 };
 
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
