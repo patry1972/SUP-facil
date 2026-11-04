@@ -127,24 +127,25 @@ function updateWindMap(name,wind,dir,gust,stamp){
  if(!beachMap.getPane(pane)){beachMap.createPane(pane);beachMap.getPane(pane).style.zIndex=650;beachMap.getPane(pane).style.pointerEvents='auto';}
  const seaBearing=getBeachSeaBearing(name);
  const arrowIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
- // La flecha solo se coloca cuando conocemos una orientación hacia el mar.
- // Si falta, intentamos obtenerla de la línea de costa de OpenStreetMap;
- // nunca usamos un rumbo fijo que pueda situarla sobre tierra.
- let point=null;
+ // Si conocemos la orientación de la costa, situamos la flecha sobre el agua.
+ // Si aún no la conocemos (o falla el servicio externo), la mostramos junto
+ // al punto de la playa para que ninguna playa se quede sin flecha.
+ let point;
  if(Number.isFinite(seaBearing)){
   point=windDestination(coords,seaBearing,500);
-  windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
  }else{
+  point=coords;
   loadExternalCoastOrientation(name).then(bearing=>{
    if(bearing!==null&&activeWindMapData?.name===name){
     updateWindMap(name,wind,dir,gust,stamp);
    }
   });
  }
+ windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
  const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
- const orientationNote=seaBearing===null?'<br><small>Posición orientativa</small>':'';
+ const orientationNote=Number.isFinite(seaBearing)?'':'<br><small>Ubicación provisional; ajustando a la costa</small>';
  const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label"><button type="button" class="wind-map-close" aria-label="Cerrar datos del viento" title="Ocultar datos del viento">×</button><span>Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn'+orientationNote+'</span></div>',iconSize:[142,54],iconAnchor:[-28,27]});
- if(showWindInfo&&point){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);showWindInfo=false;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+name,'false');}catch(err){}if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
+ if(showWindInfo){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);showWindInfo=false;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+name,'false');}catch(err){}if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
  refreshWindInfoButton();
 }
 
