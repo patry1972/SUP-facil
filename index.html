@@ -310,16 +310,18 @@ let externalCoastBearing={};
 function getBeachSeaBearing(name){return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
 async function loadExternalCoastOrientation(name){
  const coords=beachCoords[name];if(!coords)return null;
+ let cache={};
  try{
-  const cache=JSON.parse(localStorage.getItem(COAST_CACHE_KEY)||'{}'),saved=cache[name];
+  cache=JSON.parse(localStorage.getItem(COAST_CACHE_KEY)||'{}');
+  const saved=cache[name];
   if(saved&&Number.isFinite(saved.bearing)&&Date.now()-saved.time<7*86400000){externalCoastBearing[name]=saved.bearing;return saved.bearing;}
  }catch(e){}
  const lat=coords[0],lon=coords[1],latScale=111320,lonScale=111320*Math.cos(lat*Math.PI/180);
  const px=lon*lonScale,py=lat*latScale;
- const findNearest=(elements)=>{
+ const bearingOf=(east,north)=>(Math.atan2(east,north)*180/Math.PI+360)%360;
+ const nearestSegments=(lines)=>{
   let best=null;
-  for(const way of elements||[]){
-   const points=way.geometry||way.paths?.[0]||[];
+  for(const points of lines||[]){
    for(let i=1;i<points.length;i++){
     const a=points[i-1],b=points[i];
     const alat=Array.isArray(a)?a[1]:a.lat,alon=Array.isArray(a)?a[0]:a.lon;
@@ -328,42 +330,61 @@ async function loadExternalCoastOrientation(name){
     const ax=alon*lonScale,ay=alat*latScale,bx=blon*lonScale,by=blat*latScale,dx=bx-ax,dy=by-ay;
     const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1)));
     const qx=ax+t*dx,qy=ay+t*dy,distance=Math.hypot(px-qx,py-qy);
-    if(!best||distance<best.distance){
-     // Dirección desde el punto de playa hacia la línea de costa y, después, mar adentro.
-     const bearing=(Math.atan2(qx-px,qy-py)*180/Math.PI+360)%360;
-     best={distance,bearing};
-    }
+    if(!best||distance<best.distance)best={distance,qx,qy,dx,dy,points};
    }
   }
   return best;
  };
- // Primera fuente: varias instancias públicas de Overpass, con un radio ampliado.
+ const save=bearing=>{
+  externalCoastBearing[name]=bearing;
+  try{cache[name]={bearing,time:Date.now()};localStorage.setItem(COAST_CACHE_KEY,JSON.stringify(cache));}catch(e){}
+  return bearing;
+ };
+ // OSM: las líneas natural=coastline tienen la tierra a la izquierda y el mar a la derecha.
  const query='[out:json][timeout:12];way(around:5000,'+lat+','+lon+')[natural=coastline];out geom;';
  const overpassServers=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
  for(const server of overpassServers){
   try{
    const response=await fetch(server+'?data='+encodeURIComponent(query),{headers:{'Accept':'application/json'}});
    if(!response.ok)continue;
-   const data=await response.json(),best=findNearest(data.elements);
-   if(best&&best.distance<=4500&&best.distance>=20){
-    externalCoastBearing[name]=best.bearing;
-    try{cache[name]={bearing:best.bearing,time:Date.now()};localStorage.setItem(COAST_CACHE_KEY,JSON.stringify(cache));}catch(e){}
-    return best.bearing;
+   const data=await response.json(),best=nearestSegments((data.elements||[]).map(w=>w.geometry||[]));
+   if(best&&best.distance<=4500&&best.distance>=5){
+    // La derecha de una línea de costa OSM apunta hacia el mar.
+    return save(bearingOf(best.dy,-best.dx));
    }
   }catch(e){}
  }
- // Segunda fuente independiente: líneas de costa GSHHG publicadas como servicio ArcGIS.
+ // ArcGIS/GSHHG devuelve polígonos con rings (no paths). Comprobamos qué lado
+ // del segmento está dentro de tierra y colocamos la flecha en el lado contrario.
  try{
   const delta=0.06,geometry=encodeURIComponent(JSON.stringify({xmin:lon-delta,ymin:lat-delta,xmax:lon+delta,ymax:lat+delta,spatialReference:{wkid:4326}}));
   const url='https://services7.arcgis.com/WSiUmUhlFx4CtMBB/arcgis/rest/services/GSHHS_GlobalCoastlines_HighResolution/FeatureServer/0/query?where=1%3D1&geometry='+geometry+'&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=true&outSR=4326&f=json';
   const response=await fetch(url,{headers:{'Accept':'application/json'}});
   if(response.ok){
-   const data=await response.json(),features=(data.features||[]).map(f=>({paths:f.geometry?.paths?.flatMap(p=>[p])||[]}));
-   const best=findNearest(features);
-   if(best&&best.distance<=4500&&best.distance>=20){
-    externalCoastBearing[name]=best.bearing;
-    try{cache[name]={bearing:best.bearing,time:Date.now()};localStorage.setItem(COAST_CACHE_KEY,JSON.stringify(cache));}catch(e){}
-    return best.bearing;
+   const data=await response.json(),rings=(data.features||[]).flatMap(f=>f.geometry?.rings||[]);
+   const best=nearestSegments(rings);
+   if(best&&best.distance<=4500&&best.distance>=5){
+    const inside=(x,y)=>{
+     let hit=false;
+     for(const ring of rings){
+      let ringHit=false;
+      for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+       const xi=ring[i][0]*lonScale,yi=ring[i][1]*latScale,xj=ring[j][0]*lonScale,yj=ring[j][1]*latScale;
+       if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))ringHit=!ringHit;
+      }
+      if(ringHit)hit=!hit;
+     }
+     return hit;
+    };
+    const length=Math.hypot(best.dx,best.dy)||1;
+    const nx=best.dy/length,ny=-best.dx/length,offset=100;
+    const leftIsLand=inside(best.qx-nx*offset,best.qy-ny*offset);
+    const rightIsLand=inside(best.qx+nx*offset,best.qy+ny*offset);
+    if(leftIsLand!==rightIsLand){
+     // La flecha apunta al lado que NO está dentro del polígono terrestre.
+     const east=leftIsLand?nx:-nx,north=leftIsLand?ny:-ny;
+     return save(bearingOf(east,north));
+    }
    }
   }
  }catch(e){}
