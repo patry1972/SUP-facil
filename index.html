@@ -314,32 +314,60 @@ async function loadExternalCoastOrientation(name){
   const cache=JSON.parse(localStorage.getItem(COAST_CACHE_KEY)||'{}'),saved=cache[name];
   if(saved&&Number.isFinite(saved.bearing)&&Date.now()-saved.time<7*86400000){externalCoastBearing[name]=saved.bearing;return saved.bearing;}
  }catch(e){}
- try{
-  const query='[out:json][timeout:8];way(around:1800,'+coords[0]+','+coords[1]+')[natural=coastline];out geom;';
-  const response=await fetch('https://overpass-api.de/api/interpreter?data='+encodeURIComponent(query),{headers:{'Accept':'application/json'}});
-  if(!response.ok)throw new Error('OpenStreetMap no disponible');
-  const data=await response.json();let best=null;
-  const latScale=111320,lonScale=111320*Math.cos(coords[0]*Math.PI/180);
-  const px=coords[1]*lonScale,py=coords[0]*latScale;
-  for(const way of (data.elements||[])){
-   const points=way.geometry||[];
+ const lat=coords[0],lon=coords[1],latScale=111320,lonScale=111320*Math.cos(lat*Math.PI/180);
+ const px=lon*lonScale,py=lat*latScale;
+ const findNearest=(elements)=>{
+  let best=null;
+  for(const way of elements||[]){
+   const points=way.geometry||way.paths?.[0]||[];
    for(let i=1;i<points.length;i++){
-    const a=points[i-1],b=points[i];if(!Number.isFinite(a.lat)||!Number.isFinite(a.lon)||!Number.isFinite(b.lat)||!Number.isFinite(b.lon))continue;
-    const ax=a.lon*lonScale,ay=a.lat*latScale,bx=b.lon*lonScale,by=b.lat*latScale,dx=bx-ax,dy=by-ay;
+    const a=points[i-1],b=points[i];
+    const alat=Array.isArray(a)?a[1]:a.lat,alon=Array.isArray(a)?a[0]:a.lon;
+    const blat=Array.isArray(b)?b[1]:b.lat,blon=Array.isArray(b)?b[0]:b.lon;
+    if(!Number.isFinite(alat)||!Number.isFinite(alon)||!Number.isFinite(blat)||!Number.isFinite(blon))continue;
+    const ax=alon*lonScale,ay=alat*latScale,bx=blon*lonScale,by=blat*latScale,dx=bx-ax,dy=by-ay;
     const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1)));
-    const distance=Math.hypot(px-(ax+t*dx),py-(ay+t*dy));
+    const qx=ax+t*dx,qy=ay+t*dy,distance=Math.hypot(px-qx,py-qy);
     if(!best||distance<best.distance){
-     const bearing=(Math.atan2(dx,dy)*180/Math.PI+360)%360;
-     // En OSM, la costa se digitaliza con tierra a la derecha y mar a la izquierda.
-     best={distance,bearing:(bearing+270)%360};
+     // Dirección desde el punto de playa hacia la línea de costa y, después, mar adentro.
+     const bearing=(Math.atan2(qx-px,qy-py)*180/Math.PI+360)%360;
+     best={distance,bearing};
     }
    }
   }
-  if(!best||best.distance>1200)throw new Error('No hay línea de costa cercana suficiente');
-  externalCoastBearing[name]=best.bearing;
-  try{cache[name]={bearing:best.bearing,time:Date.now()};localStorage.setItem(COAST_CACHE_KEY,JSON.stringify(cache));}catch(e){}
-  return best.bearing;
- }catch(error){return null;}
+  return best;
+ };
+ // Primera fuente: varias instancias públicas de Overpass, con un radio ampliado.
+ const query='[out:json][timeout:12];way(around:5000,'+lat+','+lon+')[natural=coastline];out geom;';
+ const overpassServers=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+ for(const server of overpassServers){
+  try{
+   const response=await fetch(server+'?data='+encodeURIComponent(query),{headers:{'Accept':'application/json'}});
+   if(!response.ok)continue;
+   const data=await response.json(),best=findNearest(data.elements);
+   if(best&&best.distance<=4500&&best.distance>=20){
+    externalCoastBearing[name]=best.bearing;
+    try{cache[name]={bearing:best.bearing,time:Date.now()};localStorage.setItem(COAST_CACHE_KEY,JSON.stringify(cache));}catch(e){}
+    return best.bearing;
+   }
+  }catch(e){}
+ }
+ // Segunda fuente independiente: líneas de costa GSHHG publicadas como servicio ArcGIS.
+ try{
+  const delta=0.06,geometry=encodeURIComponent(JSON.stringify({xmin:lon-delta,ymin:lat-delta,xmax:lon+delta,ymax:lat+delta,spatialReference:{wkid:4326}}));
+  const url='https://services7.arcgis.com/WSiUmUhlFx4CtMBB/arcgis/rest/services/GSHHS_GlobalCoastlines_HighResolution/FeatureServer/0/query?where=1%3D1&geometry='+geometry+'&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=true&outSR=4326&f=json';
+  const response=await fetch(url,{headers:{'Accept':'application/json'}});
+  if(response.ok){
+   const data=await response.json(),features=(data.features||[]).map(f=>({paths:f.geometry?.paths?.flatMap(p=>[p])||[]}));
+   const best=findNearest(features);
+   if(best&&best.distance<=4500&&best.distance>=20){
+    externalCoastBearing[name]=best.bearing;
+    try{cache[name]={bearing:best.bearing,time:Date.now()};localStorage.setItem(COAST_CACHE_KEY,JSON.stringify(cache));}catch(e){}
+    return best.bearing;
+   }
+  }
+ }catch(e){}
+ return null;
 }
 function assessWaveExposure(name,waveDir){const facing=getBeachSeaBearing(name);if(!Number.isFinite(waveDir)||!Number.isFinite(facing))return {penalty:0,label:'protección no determinada',certainty:'unknown'};const diff=angleDiff(waveDir,facing);if(diff<=45)return {penalty:8,label:'oleaje de cara a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};if(diff<=90)return {penalty:4,label:'oleaje oblicuo respecto a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};return {penalty:0,label:'oleaje no directamente enfrentado a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};}
 function updateWindRelation(windDir){
