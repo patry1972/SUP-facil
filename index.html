@@ -120,28 +120,33 @@ function updateWindMap(name,wind,dir,gust,stamp){
  windMapArrow.forEach(layer=>beachMap.removeLayer(layer));windMapArrow=[];
  if(windMapLabel){beachMap.removeLayer(windMapLabel);windMapLabel=null;}
  if(!Number.isFinite(Number(wind)))return;
- wind=Number(wind);dir=Number.isFinite(Number(dir))?Number(dir):null;gust=Number(gust);
+ wind=Number(wind);
+ dir=dir!==null&&dir!==undefined&&dir!==''&&Number.isFinite(Number(dir))?Number(dir):null;
+ gust=Number(gust);
+ // La visibilidad se recupera por playa en cada actualización, evitando que
+ // ocultar el panel en una playa afecte a la siguiente.
+ showWindInfo=readWindInfoVisibility(name);
  activeWindMapData={name,wind,dir,gust,stamp};
  const coords=beachCoords[name],angle=dir===null?null:(dir+90)%360;
  const pane='windOverlayPane';
  if(!beachMap.getPane(pane)){beachMap.createPane(pane);beachMap.getPane(pane).style.zIndex=650;beachMap.getPane(pane).style.pointerEvents='auto';}
  const seaBearing=getBeachSeaBearing(name);
  const arrowIcon=dir===null?null:L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
- // Si conocemos la orientación de la costa, situamos la flecha sobre el agua.
- // Si aún no la conocemos (o falla el servicio externo), la mostramos junto
- // al punto de la playa para que ninguna playa se quede sin flecha.
- let point;
+ // La flecha solo se coloca cuando conocemos el lado del mar.
+ // Nunca la situamos sobre el marcador como posición provisional.
+ let point=coords;
  if(Number.isFinite(seaBearing)){
   point=windDestination(coords,seaBearing,500);
  }else{
-  point=coords;
   loadExternalCoastOrientation(name).then(bearing=>{
    if(bearing!==null&&activeWindMapData?.name===name){
     updateWindMap(name,wind,dir,gust,stamp);
    }
   });
  }
- if(arrowIcon)windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
+ if(arrowIcon&&Number.isFinite(seaBearing)){
+  windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
+ }
  const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
  const directionText=dir===null?'<br>Dirección sin dato':'';
  const orientationNote=Number.isFinite(seaBearing)?'':'<br><small>Orientación provisional</small>';
@@ -303,15 +308,7 @@ const beachSeaBearing={
  "Los Boliches (Fuengirola)":205,
  "El Bombo (Mijas)":205,
  "Playa del Castillo (Fuengirola)":205,
- "Cala Murada (Mallorca)":90,
- "Cala San Vicent":315,
- "Cala Serena":90,
- "Caló des Borgit":135,
- "Cala Torta":45,
- "Cala Bota":90,
- "Cala Mitjana":45,
- "Portocolom":90,
- "Cala Domingos":100
+ "Cala Murada (Mallorca)":90
 };
 
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
