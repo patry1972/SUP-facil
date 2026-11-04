@@ -130,8 +130,9 @@ function updateWindMap(name,wind,dir,gust,stamp){
  // La flecha solo se coloca cuando conocemos una orientación hacia el mar.
  // Si falta, intentamos obtenerla de la línea de costa de OpenStreetMap;
  // nunca usamos un rumbo fijo que pueda situarla sobre tierra.
+ let point=null;
  if(Number.isFinite(seaBearing)){
-  const point=windDestination(coords,seaBearing,500);
+  point=windDestination(coords,seaBearing,500);
   windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
  }else{
   loadExternalCoastOrientation(name).then(bearing=>{
@@ -143,7 +144,7 @@ function updateWindMap(name,wind,dir,gust,stamp){
  const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
  const orientationNote=seaBearing===null?'<br><small>Posición orientativa</small>':'';
  const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label"><button type="button" class="wind-map-close" aria-label="Cerrar datos del viento" title="Ocultar datos del viento">×</button><span>Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn'+orientationNote+'</span></div>',iconSize:[142,54],iconAnchor:[-28,27]});
- if(showWindInfo){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);showWindInfo=false;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+name,'false');}catch(err){}if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
+ if(showWindInfo&&point){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);showWindInfo=false;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+name,'false');}catch(err){}if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
  refreshWindInfoButton();
 }
 
