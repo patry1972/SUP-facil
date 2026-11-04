@@ -125,14 +125,21 @@ function updateWindMap(name,wind,dir,gust,stamp){
  const coords=beachCoords[name],angle=(dir+90)%360;
  const pane='windOverlayPane';
  if(!beachMap.getPane(pane)){beachMap.createPane(pane);beachMap.getPane(pane).style.zIndex=650;beachMap.getPane(pane).style.pointerEvents='auto';}
- const seaBearing=Number.isFinite(getBeachSeaBearing(name))?getBeachSeaBearing(name):null;
+ const seaBearing=getBeachSeaBearing(name);
  const arrowIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
- // Colocamos la flecha más mar adentro. En playas sin orientación registrada usamos
- // una posición provisional hacia el sur, habitual en la costa de Málaga.
- const arrowBearing=name==="Los Boliches (Fuengirola)"?180:(seaBearing!==null?seaBearing:180);
- const arrowDistance=name==="Los Boliches (Fuengirola)"?850:(seaBearing!==null?650:850);
- const point=windDestination(coords,arrowBearing,arrowDistance);
- windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
+ // La flecha solo se coloca cuando conocemos una orientación hacia el mar.
+ // Si falta, intentamos obtenerla de la línea de costa de OpenStreetMap;
+ // nunca usamos un rumbo fijo que pueda situarla sobre tierra.
+ if(Number.isFinite(seaBearing)){
+  const point=windDestination(coords,seaBearing,500);
+  windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
+ }else{
+  loadExternalCoastOrientation(name).then(bearing=>{
+   if(bearing!==null&&activeWindMapData?.name===name){
+    updateWindMap(name,wind,dir,gust,stamp);
+   }
+  });
+ }
  const gustText=Number.isFinite(gust)?gust.toFixed(1):'—';
  const orientationNote=seaBearing===null?'<br><small>Posición orientativa</small>':'';
  const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label"><button type="button" class="wind-map-close" aria-label="Cerrar datos del viento" title="Ocultar datos del viento">×</button><span>Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn'+orientationNote+'</span></div>',iconSize:[142,54],iconAnchor:[-28,27]});
