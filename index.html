@@ -122,7 +122,7 @@ function windDestination(latlng,bearing,distance){
 function updateWindMap(name,wind,dir,gust,stamp){
  if(!beachMap||!window.L||!beachCoords[name])return;
  windMapArrow.forEach(layer=>beachMap.removeLayer(layer));windMapArrow=[];
- if(windMapLabel){beachMap.removeLayer(windMapLabel);windMapLabel=null;}
+ if(windMapLabel){windMapLabel.remove();windMapLabel=null;}
  if(!Number.isFinite(Number(wind)))return;
  wind=Number(wind);
  dir=dir!==null&&dir!==undefined&&dir!==''&&Number.isFinite(Number(dir))?Number(dir):null;
