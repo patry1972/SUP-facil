@@ -71,7 +71,8 @@ const $=id=>document.getElementById(id);const sel=$('beach');
 const beachProvince={
 'Las Doradas':'Málaga','Torre del Pino':'Málaga','La Herradura / Cotobro':'Granada','Marina del Este':'Granada','Punta de la Mona':'Granada','Playa de Calabajío (Almuñécar)':'Granada','Playa Cabria':'Granada','Las Alberquillas (Maro)':'Málaga','Los Boliches (Fuengirola)':'Málaga','El Bombo (Mijas)':'Málaga','Maro (Málaga)':'Málaga','Playa del Castillo (Fuengirola)':'Málaga',
 'Playa del Cañuelo':'Málaga','Playa Cabopino':'Málaga','Cala Domingos':'Illes Balears','Cala Murada (Mallorca)':'Illes Balears','Cala San Vicent':'Illes Balears','Cala Serena':'Illes Balears','Caló des Borgit':'Illes Balears','Cala Torta':'Illes Balears','Cala Bota':'Illes Balears','Cala Mitjana':'Illes Balears','Portocolom':'Illes Balears'};
-function rebuildBeachSelect(preferred){sel.innerHTML='';const provinces=[...new Set(Object.keys(beaches).map(n=>beachProvince[n]||'Málaga'))].sort((a,b)=>a.localeCompare(b,'es'));provinces.forEach(prov=>{const group=document.createElement('optgroup');group.label=prov;Object.keys(beaches).filter(n=>(beachProvince[n]||'Málaga')===prov).sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n.replace(/^Consulta temporal:\s*/,'').replace(/\s*(?:[·–-]\s*)?\(?Playa temporal.*$/i,'').replace(/^Playa temporal:\s*/i,'').trim();group.appendChild(o)});sel.appendChild(group)});if(preferred&&beaches[preferred])sel.value=preferred;else if(beaches['Torre del Pino'])sel.value='Torre del Pino';}
+function cleanLegacyBeachName(name){return String(name||'').replace(/^Consulta temporal:\s*/i,'').replace(/\s*(?:[·–-]\s*)?\(?Playa temporal\)?\s*$/i,'').trim();}
+function rebuildBeachSelect(preferred){sel.innerHTML='';const provinces=[...new Set(Object.keys(beaches).map(n=>beachProvince[n]||'Málaga'))].sort((a,b)=>a.localeCompare(b,'es'));provinces.forEach(prov=>{const group=document.createElement('optgroup');group.label=prov;Object.keys(beaches).filter(n=>(beachProvince[n]||'Málaga')===prov).sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'})).forEach(n=>{const o=document.createElement('option');o.value=cleanLegacyBeachName(n);o.textContent=cleanLegacyBeachName(n);group.appendChild(o)});sel.appendChild(group)});if(preferred&&beaches[preferred])sel.value=preferred;else if(beaches['Torre del Pino'])sel.value='Torre del Pino';}
 rebuildBeachSelect('Torre del Pino');
 // Coordenadas aproximadas para situar las playas; se pueden afinar con futuras visitas.
 const beachCoords={
@@ -102,14 +103,15 @@ const beachCoords={
 let beachMap=null,beachMarkers={},mapReady=false,editingLocation=false,addingBeach=false,pendingCoords=null,originalCoords=null;
 let windMapArrow=[],windMapLabel=null;
 // Distancia desde el marcador para colocar la flecha claramente sobre el agua.
-const windArrowDistance={'Cala San Vicent':850,'Cala Torta':950,'Cala Mitjana':950,'Cala Domingos':850,'Portocolom':900};
-const WIND_INFO_VISIBILITY_KEY='supfacil_wind_info_visible_v1';
-let showWindInfo=true;
-function readWindInfoVisibility(name){try{const saved=localStorage.getItem(WIND_INFO_VISIBILITY_KEY+':'+name);return saved===null?true:saved==='true';}catch(e){return true;}}
-function loadWindInfoVisibility(name){showWindInfo=readWindInfoVisibility(name);refreshWindInfoButton();}
-try{showWindInfo=readWindInfoVisibility(sel.value);}catch(e){}
-function refreshWindInfoButton(){const button=$('toggleWindInfo');if(button)button.textContent=showWindInfo?'Ocultar datos del viento':'Mostrar datos del viento';}
-function toggleWindInfo(){const name=sel.value,next=!readWindInfoVisibility(name);showWindInfo=next;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+name,String(next));}catch(e){}if(!next&&windMapLabel&&beachMap){beachMap.removeLayer(windMapLabel);windMapLabel=null;}else if(next&&activeWindMapData?.name===name){const d=activeWindMapData;updateWindMap(d.name,d.wind,d.dir,d.gust,d.stamp);}refreshWindInfoButton();}
+const windArrowDistance={'Cala San Vicent':1100,'Cala Torta':1200,'Cala Mitjana':1200,'Cala Domingos':1100,'Portocolom':1200};
+const WIND_INFO_VISIBILITY_KEY='supfacil_wind_info_hidden_beaches_v2';
+let hiddenWindInfoBeaches=new Set();
+try{const hidden=JSON.parse(localStorage.getItem(WIND_INFO_VISIBILITY_KEY)||'[]');if(Array.isArray(hidden))hiddenWindInfoBeaches=new Set(hidden.filter(n=>typeof n==='string'));}catch(e){}
+function isWindInfoVisible(name){return !hiddenWindInfoBeaches.has(name);}
+function setWindInfoVisible(name,visible){if(visible)hiddenWindInfoBeaches.delete(name);else hiddenWindInfoBeaches.add(name);try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY,JSON.stringify([...hiddenWindInfoBeaches]));}catch(e){}}
+function loadWindInfoVisibility(name){refreshWindInfoButton();}
+function refreshWindInfoButton(){const button=$('toggleWindInfo');if(button)button.textContent=isWindInfoVisible(sel.value)?'Ocultar datos del viento':'Mostrar datos del viento';}
+function toggleWindInfo(){const name=sel.value,next=!isWindInfoVisible(name);setWindInfoVisible(name,next);if(!next&&windMapLabel&&beachMap){beachMap.removeLayer(windMapLabel);windMapLabel=null;}else if(next&&activeWindMapData?.name===name){const d=activeWindMapData;updateWindMap(d.name,d.wind,d.dir,d.gust,d.stamp);}refreshWindInfoButton();}
 let activeWindMapData=null;
 function windDestination(latlng,bearing,distance){
  const R=6371000,br=bearing*Math.PI/180,lat1=latlng[0]*Math.PI/180,lon1=latlng[1]*Math.PI/180,d=distance/R;
@@ -127,7 +129,7 @@ function updateWindMap(name,wind,dir,gust,stamp){
  gust=Number(gust);
  // La visibilidad se recupera por playa en cada actualización, evitando que
  // ocultar el panel en una playa afecte a la siguiente.
- const showInfoForBeach=readWindInfoVisibility(name);showWindInfo=showInfoForBeach;
+ const showInfoForBeach=isWindInfoVisible(name);
  activeWindMapData={name,wind,dir,gust,stamp};
  const coords=beachCoords[name],angle=dir===null?null:(dir+90)%360;
  const pane='windOverlayPane';
@@ -153,20 +155,20 @@ function updateWindMap(name,wind,dir,gust,stamp){
  const directionText=dir===null?'<br>Dirección sin dato':'';
  const orientationNote=Number.isFinite(seaBearing)?'':'<br><small>Orientación provisional</small>';
  const labelIcon=L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-label"><button type="button" class="wind-map-close" aria-label="Cerrar datos del viento" title="Ocultar datos del viento">×</button><span>Viento '+wind.toFixed(1)+' kn<br>Rachas '+gustText+' kn'+directionText+orientationNote+'</span></div>',iconSize:[150,62],iconAnchor:[-28,31]});
- if(showInfoForBeach){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);showWindInfo=false;try{localStorage.setItem(WIND_INFO_VISIBILITY_KEY+':'+name,'false');}catch(err){}if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
+ if(showInfoForBeach){windMapLabel=L.marker(point,{icon:labelIcon,interactive:true,zIndexOffset:2001,pane}).addTo(beachMap);const labelElement=windMapLabel.getElement();if(labelElement){L.DomEvent.disableClickPropagation(labelElement);const closeButton=labelElement.querySelector('.wind-map-close');if(closeButton){L.DomEvent.disableClickPropagation(closeButton);L.DomEvent.on(closeButton,'click',e=>{L.DomEvent.stop(e);setWindInfoVisible(name,false);if(windMapLabel&&beachMap)beachMap.removeLayer(windMapLabel);windMapLabel=null;refreshWindInfoButton();});}}}
  refreshWindInfoButton();
 }
 
 const LOCATION_STORAGE_KEY='supfacil_corrected_beach_locations_v1';
 const ADDED_BEACHES_KEY='supfacil_added_beaches_v1';
-try{const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');let migrated=false;Object.entries(added).forEach(([n,v])=>{if(!n||!v)return;const clean=n.replace(/^Consulta temporal:\s*/,'');if(clean!==n){added[clean]=v;delete added[n];migrated=true;}if(Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[clean]=v.profile||{note:'Nueva playa añadida · pendiente de validar',detail:'Ubicación añadida por el usuario. Aún no hay observaciones suficientes sobre viento, oleaje, corrientes ni entrada/salida. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[clean]=v.coords;beachProvince[clean]=v.province||'Málaga';}});if(migrated)localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){}
+try{const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');let migrated=false;Object.entries(added).forEach(([n,v])=>{if(!n||!v)return;const clean=cleanLegacyBeachName(n);if(clean!==n){added[clean]=v;delete added[n];migrated=true;}if(Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[clean]=v.profile||{note:'Nueva playa añadida · pendiente de validar',detail:'Ubicación añadida por el usuario. Aún no hay observaciones suficientes sobre viento, oleaje, corrientes ni entrada/salida. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[clean]=v.coords;beachProvince[clean]=v.province||'Málaga';}});if(migrated)localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){}
 try{const saved=JSON.parse(localStorage.getItem(LOCATION_STORAGE_KEY)||'{}');if(saved['Playa de Enmedio']&&!saved['Playa de Calabajío (Almuñécar)']){saved['Playa de Calabajío (Almuñécar)']=saved['Playa de Enmedio'];delete saved['Playa de Enmedio'];localStorage.setItem(LOCATION_STORAGE_KEY,JSON.stringify(saved));}Object.keys(saved).forEach(n=>{if(beachCoords[n]&&Array.isArray(saved[n])&&saved[n].length===2&&saved[n].every(Number.isFinite))beachCoords[n]=saved[n];});}catch(e){}
 rebuildBeachSelect(sel.value);
 const FAVORITES_STORAGE_KEY='supfacil_favorite_beaches_v1';
 const FAVORITE_DETAILS_KEY='supfacil_favorite_beach_details_v1';
 let favoriteBeaches=[],favoriteBeachDetails={};
-try{const details=JSON.parse(localStorage.getItem(FAVORITE_DETAILS_KEY)||'{}');if(details&&typeof details==='object')favoriteBeachDetails=details;Object.entries(favoriteBeachDetails).forEach(([n,v])=>{if(!n||!v)return;const clean=n.replace(/^Consulta temporal:\s*/,'');if(clean!==n){favoriteBeachDetails[clean]=v;delete favoriteBeachDetails[n];}if(Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[clean]=v.profile||{note:'Playa guardada por ti · pendiente de validar',detail:'Ubicación añadida desde el buscador. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[clean]=v.coords;beachProvince[clean]=v.province||'Guardada por ti';}});localStorage.setItem(FAVORITE_DETAILS_KEY,JSON.stringify(favoriteBeachDetails));}catch(e){}
-try{const savedFavorites=JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY)||'[]');if(Array.isArray(savedFavorites)){favoriteBeaches=[...new Set(savedFavorites.filter(n=>typeof n==='string').map(n=>n.replace(/^Consulta temporal:\s*/,'' )).filter(n=>beaches[n]||favoriteBeachDetails[n]))];localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));}}catch(e){}
+try{const details=JSON.parse(localStorage.getItem(FAVORITE_DETAILS_KEY)||'{}');if(details&&typeof details==='object')favoriteBeachDetails=details;Object.entries(favoriteBeachDetails).forEach(([n,v])=>{if(!n||!v)return;const clean=cleanLegacyBeachName(n);if(clean!==n){favoriteBeachDetails[clean]=v;delete favoriteBeachDetails[n];}if(Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[clean]=v.profile||{note:'Playa guardada por ti · pendiente de validar',detail:'Ubicación añadida desde el buscador. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[clean]=v.coords;beachProvince[clean]=v.province||'Guardada por ti';}});localStorage.setItem(FAVORITE_DETAILS_KEY,JSON.stringify(favoriteBeachDetails));}catch(e){}
+try{const savedFavorites=JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY)||'[]');if(Array.isArray(savedFavorites)){favoriteBeaches=[...new Set(savedFavorites.filter(n=>typeof n==='string').map(n=>cleanLegacyBeachName(n)).filter(n=>beaches[n]||favoriteBeachDetails[n]))];localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));}}catch(e){}
 // Las playas guardadas por el usuario se cargan después del primer listado; reconstruimos ahora el selector para incluirlas.
 rebuildBeachSelect(sel.value);
 function saveFavoriteBeaches(){try{localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));localStorage.setItem(FAVORITE_DETAILS_KEY,JSON.stringify(favoriteBeachDetails));const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.entries(favoriteBeachDetails).forEach(([n,v])=>{if(v&&Array.isArray(v.coords))added[n]={coords:v.coords,profile:v.profile||beaches[n],province:v.province||beachProvince[n]||'Guardada por ti'};});localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){statusMessage('El navegador no ha permitido guardar los favoritos. Comprueba el espacio y los permisos de almacenamiento.');}}
@@ -310,11 +312,11 @@ const beachSeaBearing={
  "Playa del Castillo (Fuengirola)":205,
  "Cala Murada (Mallorca)":90,
  "Cala San Vicent":45,
- "Cala Domingos":151,
+ "Cala Domingos":97,
  "Cala Serena":135,
- "Cala Torta":26,
- "Cala Mitjana":26,
- "Portocolom":90
+ "Cala Torta":0,
+ "Cala Mitjana":29,
+ "Portocolom":135
 };
 
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
