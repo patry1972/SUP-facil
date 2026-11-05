@@ -163,11 +163,11 @@ rebuildBeachSelect(sel.value);
 const FAVORITES_STORAGE_KEY='supfacil_favorite_beaches_v1';
 const FAVORITE_DETAILS_KEY='supfacil_favorite_beach_details_v1';
 let favoriteBeaches=[],favoriteBeachDetails={};
-try{const details=JSON.parse(localStorage.getItem(FAVORITE_DETAILS_KEY)||'{}');if(details&&typeof details==='object')favoriteBeachDetails=details;Object.entries(favoriteBeachDetails).forEach(([n,v])=>{if(n&&v&&Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[n]=v.profile||{note:'Playa guardada por ti · pendiente de validar',detail:'Ubicación añadida desde el buscador. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[n]=v.coords;beachProvince[n]=v.province||'Guardada por ti';}});}catch(e){}
-try{const savedFavorites=JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY)||'[]');if(Array.isArray(savedFavorites))favoriteBeaches=savedFavorites.filter(n=>typeof n==='string'&&(beaches[n]||favoriteBeachDetails[n]));}catch(e){}
+try{const details=JSON.parse(localStorage.getItem(FAVORITE_DETAILS_KEY)||'{}');if(details&&typeof details==='object')favoriteBeachDetails=details;Object.entries(favoriteBeachDetails).forEach(([n,v])=>{if(!n||!v)return;const clean=n.replace(/^Consulta temporal:\s*/,'');if(clean!==n){favoriteBeachDetails[clean]=v;delete favoriteBeachDetails[n];}if(Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[clean]=v.profile||{note:'Playa guardada por ti · pendiente de validar',detail:'Ubicación añadida desde el buscador. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[clean]=v.coords;beachProvince[clean]=v.province||'Guardada por ti';}});localStorage.setItem(FAVORITE_DETAILS_KEY,JSON.stringify(favoriteBeachDetails));}catch(e){}
+try{const savedFavorites=JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY)||'[]');if(Array.isArray(savedFavorites)){favoriteBeaches=[...new Set(savedFavorites.filter(n=>typeof n==='string').map(n=>n.replace(/^Consulta temporal:\s*/,'' )).filter(n=>beaches[n]||favoriteBeachDetails[n]))];localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));}}catch(e){}
 // Las playas guardadas por el usuario se cargan después del primer listado; reconstruimos ahora el selector para incluirlas.
 rebuildBeachSelect(sel.value);
-function saveFavoriteBeaches(){try{localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));localStorage.setItem(FAVORITE_DETAILS_KEY,JSON.stringify(favoriteBeachDetails));}catch(e){statusMessage('El navegador no ha permitido guardar los favoritos. Comprueba el espacio y los permisos de almacenamiento.');}}
+function saveFavoriteBeaches(){try{localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));localStorage.setItem(FAVORITE_DETAILS_KEY,JSON.stringify(favoriteBeachDetails));const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.entries(favoriteBeachDetails).forEach(([n,v])=>{if(v&&Array.isArray(v.coords))added[n]={coords:v.coords,profile:v.profile||beaches[n],province:v.province||beachProvince[n]||'Guardada por ti'};});localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){statusMessage('El navegador no ha permitido guardar los favoritos. Comprueba el espacio y los permisos de almacenamiento.');}}
 function favoriteMarkerIcon(){
  return L.divIcon({className:'favorite-beach-marker',html:'<span style="display:block;color:#ffdf00;font-size:38px;line-height:38px;font-family:Arial,sans-serif;-webkit-text-stroke:1px #7a4b00;text-shadow:0 0 3px #fff,0 0 7px #ffb700,0 2px 3px #243b45">★</span>',iconSize:[38,38],iconAnchor:[19,19]});
 }
@@ -181,7 +181,7 @@ function refreshFavoriteControls(){
  const list=$('favoriteBeaches'),button=$('toggleFavorite'),selected=sel.value;
  list.innerHTML='';
  if(!favoriteBeaches.length){const opt=document.createElement('option');opt.value='';opt.textContent='Todavía no tienes playas favoritas';list.appendChild(opt);list.disabled=true;}
- else{list.disabled=false;const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Elige una de tus favoritas…';list.appendChild(placeholder);favoriteBeaches.forEach(name=>{const opt=document.createElement('option');opt.value=name;opt.textContent=name.replace(/^Consulta temporal:\s*/,'');list.appendChild(opt);});}
+ else{list.disabled=false;const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='Elige una de tus favoritas…';list.appendChild(placeholder);favoriteBeaches.forEach(name=>{const opt=document.createElement('option');opt.value=name;opt.textContent=name;list.appendChild(opt);});}
  const isFavorite=favoriteBeaches.includes(selected);
  button.textContent=isFavorite?'★ Quitar de favoritos':'☆ Añadir a favoritos';
  button.setAttribute('aria-pressed',String(isFavorite));
@@ -189,8 +189,8 @@ function refreshFavoriteControls(){
 }
 $('toggleFavorite').addEventListener('click',()=>{
  const name=sel.value;if(!name)return;
- if(favoriteBeaches.includes(name)){favoriteBeaches=favoriteBeaches.filter(n=>n!==name);delete favoriteBeachDetails[name];}
- else{favoriteBeaches.push(name);if(temporaryBeachNames.includes(name)&&beachCoords[name])favoriteBeachDetails[name]={coords:beachCoords[name].slice(),profile:beaches[name],province:beachProvince[name]||'Consulta temporal'};}
+ if(favoriteBeaches.includes(name)){favoriteBeaches=favoriteBeaches.filter(n=>n!==name);}
+ else{favoriteBeaches.push(name);if(beachCoords[name])favoriteBeachDetails[name]={coords:beachCoords[name].slice(),profile:beaches[name],province:beachProvince[name]||'Guardada por ti'};}
  saveFavoriteBeaches();refreshFavoriteControls();
 });
 $('favoriteBeaches').addEventListener('change',()=>{
@@ -212,7 +212,7 @@ $('cancelLocation').addEventListener('click',()=>{if(editingLocation&&originalCo
 $('exportLocations').addEventListener('click',()=>{const added={};Object.keys(beaches).forEach(n=>{if(!Object.prototype.hasOwnProperty.call(beachProvince,n)&&beachCoords[n])added[n]={coords:beachCoords[n],profile:beaches[n]};});const data={app:'SUP Fácil',type:'ubicaciones-playas',version:2,exportedAt:new Date().toISOString(),coordinates:beachCoords,addedBeaches:added};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='SUP-Facil-ubicaciones.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);statusMessage('Archivo de ubicaciones exportado. Busca «SUP-Facil-ubicaciones.json» en Descargas y guárdalo para enviármelo cuando quieras.');});
 $('showAllBeaches').addEventListener('click',()=>{if(mapReady){const pts=Object.values(beachMarkers).map(m=>m.getLatLng());if(pts.length)beachMap.fitBounds(L.latLngBounds(pts).pad(0.08));}});
 $('openMap').addEventListener('click',()=>{const c=beachCoords[sel.value];if(c)window.open('https://www.google.com/maps?q='+c[0]+','+c[1],'_blank','noopener');});
-let temporaryBeachNames=[];
+
 function showMapBeachFallback(results){
  results.innerHTML='<p class="notice">El buscador por nombre no ha podido localizar esta playa. Podemos elegirla directamente en el mapa, que permite marcar el punto exacto de la costa.</p><button type="button" id="chooseBeachOnMap" class="secondary" style="margin-top:8px">📍 Elegir playa en el mapa</button>';
  const fallback=$('chooseBeachOnMap');
@@ -220,7 +220,7 @@ function showMapBeachFallback(results){
   const mapSection=$('beachmap');
   if(mapSection){mapSection.scrollIntoView({behavior:'smooth',block:'center'});}
   setTimeout(()=>{if($('addBeach'))$('addBeach').click();},250);
-  results.innerHTML='<p class="notice">En el mapa, toca el punto exacto de la costa. Después escribe el nombre de la playa y la provincia. Se añadirá temporalmente a tu lista de este navegador y podrás ver su semáforo.</p>';
+  results.innerHTML='<p class="notice">En el mapa, toca el punto exacto de la costa. Después escribe el nombre de la playa y la provincia. Podrás añadirla a tus favoritas para conservarla.</p>';
  });
 }
 async function searchOtherBeach(){
@@ -265,16 +265,14 @@ async function searchOtherBeach(){
    const choice=document.createElement('button');choice.type='button';choice.className='secondary';choice.style.cssText='background:#e7f2ed;color:#145b50;border:1px solid #c7ddd3;text-align:left;margin:0;padding:11px;font-size:14px';
    choice.textContent=label;
    choice.addEventListener('click',()=>{
-    const name='Consulta temporal: '+item.name+' ('+[item.admin1,item.country].filter(Boolean).join(', ')+')';
-    temporaryBeachNames.forEach(oldName=>{if(favoriteBeaches.includes(oldName))return;const opt=[...sel.options].find(o=>o.value===oldName);if(opt)opt.remove();delete beaches[oldName];delete beachCoords[oldName];delete beachProvince[oldName];delete beachSeaBearing[oldName];});
-    temporaryBeachNames=[name];
-    beaches[name]={note:'Consulta temporal · ubicación sin validar',detail:'Ubicación localizada mediante búsqueda geográfica. La orientación, la exposición, las corrientes, la marea y la dificultad de entrada/salida no están verificadas. La valoración es orientativa y prudente: comprueba el mar real desde la orilla.',risk:1};
-    beachCoords[name]=[item.latitude,item.longitude];beachProvince[name]=item.admin1||'Consulta temporal';
-    if(mapReady&&beachMap){refreshMarker(name);beachMarkers[name].bindPopup('<strong>'+item.name+'</strong>');}
-    const group=document.createElement('optgroup');group.label='Consulta temporal (no guardada)';
-    const opt=document.createElement('option');opt.value=name;opt.textContent=name;group.appendChild(opt);sel.appendChild(group);sel.value=name;
+    let name=item.name||String(item.label||'Playa localizada').split(',')[0];
+    if(beaches[name]&&beachCoords[name]&&(Math.abs(beachCoords[name][0]-item.latitude)>.01||Math.abs(beachCoords[name][1]-item.longitude)>.01))name+=' ('+[item.admin1,item.country].filter(Boolean).join(', ')+')';
+    beaches[name]={note:'Playa localizada · pendiente de validar',detail:'Ubicación encontrada mediante búsqueda geográfica. La orientación, la exposición, las corrientes, la marea y la dificultad de entrada/salida aún no están verificadas. La valoración es orientativa y prudente: comprueba el mar real desde la orilla.',risk:1};
+    beachCoords[name]=[item.latitude,item.longitude];beachProvince[name]=item.admin1||item.country||'Guardada por ti';
+    if(mapReady&&beachMap){refreshMarker(name);beachMarkers[name].bindPopup('<strong>'+name+'</strong>');}
+    rebuildBeachSelect(name);
     const exp=document.querySelector('input[name="exposure"][value="exposed"]');if(exp)exp.checked=true;
-    results.innerHTML='<p class="notice">Playa seleccionada. Cargando previsión automática… La orientación y el acceso no están validados, así que interpreta el semáforo con especial prudencia.</p>';
+    results.innerHTML='<p class="notice">Playa seleccionada. Cargando previsión automática… Puedes guardarla con «Añadir a favoritos» para conservar su nombre y ubicación.</p>';
     sel.dispatchEvent(new Event('change'));
     if(mapReady&&beachMap){refreshMarker(name);beachMap.setView(beachCoords[name],12);if(beachMarkers[name])beachMarkers[name].openPopup();setTimeout(()=>beachMap.invalidateSize(),100);}
    });
