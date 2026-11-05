@@ -103,7 +103,7 @@ const beachCoords={
 let beachMap=null,beachMarkers={},mapReady=false,editingLocation=false,addingBeach=false,pendingCoords=null,originalCoords=null;
 let windMapArrow=[],windMapLabel=null,windMapNameControl=null,windMapInfoControl=null;
 // Distancia desde el marcador para colocar la flecha claramente sobre el agua.
-const windArrowDistance={'Cala San Vicent':1100,'Cala Torta':1200,'Cala Mitjana':1200,'Cala Domingos':1100,'Portocolom':2500,'Los Boliches (Fuengirola)':1200,'Playa del Castillo (Fuengirola)':1200};
+const windArrowDistance={'Cala San Vicent':1100,'Cala Torta':1200,'Cala Mitjana':1200,'Cala Domingos':1100,'Portocolom':2500,'Los Boliches (Fuengirola)':900,'Playa del Castillo (Fuengirola)':900};
 const WIND_INFO_VISIBILITY_KEY='supfacil_wind_info_hidden_beaches_v2';
 let hiddenWindInfoBeaches=new Set();
 try{const hidden=JSON.parse(localStorage.getItem(WIND_INFO_VISIBILITY_KEY)||'[]');if(Array.isArray(hidden))hiddenWindInfoBeaches=new Set(hidden.filter(n=>typeof n==='string'));}catch(e){}
@@ -326,9 +326,9 @@ const beachSeaBearing={
  "Playa de Calabajío (Almuñécar)":200,
  "Playa Cabria":200,
  "Las Alberquillas (Maro)":190,
- "Los Boliches (Fuengirola)":150,
+ "Los Boliches (Fuengirola)":100,
  "El Bombo (Mijas)":205,
- "Playa del Castillo (Fuengirola)":150,
+ "Playa del Castillo (Fuengirola)":100,
  "Cala Murada (Mallorca)":90,
  "Cala San Vicent":45,
  "Cala Domingos":97,
@@ -341,7 +341,7 @@ const beachSeaBearing={
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
 const COAST_CACHE_KEY='supfacil_coast_orientation_v2';
 let externalCoastBearing={};
-function getBeachSeaBearing(name){const fixed=['Cala San Vicent','Cala Domingos','Cala Serena','Cala Torta','Cala Mitjana','Portocolom'];if(fixed.includes(name)&&Number.isFinite(beachSeaBearing[name]))return beachSeaBearing[name];const coords=beachCoords[name];if(coords&&Math.abs(coords[0]-36.7307652)<0.012&&Math.abs(coords[1]+2.1455119)<0.012)return 166;return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
+function getBeachSeaBearing(name){const fixed=['Cala San Vicent','Cala Domingos','Cala Serena','Cala Torta','Cala Mitjana','Portocolom','Los Boliches (Fuengirola)','Playa del Castillo (Fuengirola)'];if(fixed.includes(name)&&Number.isFinite(beachSeaBearing[name]))return beachSeaBearing[name];const coords=beachCoords[name];if(coords&&Math.abs(coords[0]-36.7307652)<0.012&&Math.abs(coords[1]+2.1455119)<0.012)return 166;return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
 async function loadExternalCoastOrientation(name){
  const coords=beachCoords[name];if(!coords)return null;
  let cache={};
