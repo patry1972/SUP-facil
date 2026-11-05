@@ -438,7 +438,7 @@ loadAutoArrowBeachNames();
 async function findAutoArrowPoint(name,bearing){
  const coords=beachCoords[name];if(!coords||!Number.isFinite(bearing))return null;
  let cache={};try{cache=JSON.parse(localStorage.getItem(AUTO_ARROW_CACHE_KEY)||'{}');const hit=cache[name];if(hit&&Array.isArray(hit.point)&&hit.point.length===2&&Array.isArray(hit.coords)&&hit.coords[0]===coords[0]&&hit.coords[1]===coords[1]&&Date.now()-hit.time<30*86400000)return hit.point;}catch(e){}
- const lat=coords[0],lon=coords[1],distances=[250,400,550,700,900,1150,1450];
+ const lat=coords[0],lon=coords[1],distances=[250,400,550,700,900,1150,1450,1800,2300,3000,4000,5000];
  let rings=[];
  try{
   const delta=.035,geometry=encodeURIComponent(JSON.stringify({xmin:lon-delta,ymin:lat-delta,xmax:lon+delta,ymax:lat+delta,spatialReference:{wkid:4326}}));
@@ -454,7 +454,15 @@ async function findAutoArrowPoint(name,bearing){
   }if(ringHit)hit=!hit;}
   return hit;
  };
- for(const distance of distances){const point=windDestination(coords,bearing,distance);const land=inside(point);if(land===false){try{cache[name]={point,coords:coords.slice(),time:Date.now()};localStorage.setItem(AUTO_ARROW_CACHE_KEY,JSON.stringify(cache));}catch(e){}return point;}}
+ // Probamos primero la orientación calculada y después la contraria. En algunas
+ // geometrías de costa el sentido de la línea puede venir invertido; solo aceptamos
+ // puntos que el polígono cartográfico identifica como agua.
+ for(const candidateBearing of [bearing,(bearing+180)%360]){
+  for(const distance of distances){
+   const point=windDestination(coords,candidateBearing,distance),land=inside(point);
+   if(land===false){try{cache[name]={point,coords:coords.slice(),time:Date.now()};localStorage.setItem(AUTO_ARROW_CACHE_KEY,JSON.stringify(cache));}catch(e){}return point;}
+  }
+ }
  // Si el servicio cartográfico no responde, la orientación OSM sigue siendo una
  // aproximación: usamos un desplazamiento amplio, sin tocar las playas existentes.
  if(!rings.length){const fallback=windDestination(coords,bearing,700);try{cache[name]={point:fallback,time:Date.now()};localStorage.setItem(AUTO_ARROW_CACHE_KEY,JSON.stringify(cache));}catch(e){}return fallback;}
