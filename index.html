@@ -103,7 +103,7 @@ const beachCoords={
 let beachMap=null,beachMarkers={},mapReady=false,editingLocation=false,addingBeach=false,pendingCoords=null,originalCoords=null;
 let windMapArrow=[],windMapLabel=null,windMapNameControl=null,windMapInfoControl=null;
 // Distancia desde el marcador para colocar la flecha claramente sobre el agua.
-const windArrowDistance={'Cala San Vicent':1100,'Cala Torta':1200,'Cala Mitjana':1200,'Cala Domingos':1100,'Portocolom':2500};
+const windArrowDistance={'Cala San Vicent':1100,'Cala Torta':1200,'Cala Mitjana':1200,'Cala Domingos':1100,'Portocolom':2500,'Los Boliches (Fuengirola)':1200,'Playa del Castillo (Fuengirola)':1200};
 const WIND_INFO_VISIBILITY_KEY='supfacil_wind_info_hidden_beaches_v2';
 let hiddenWindInfoBeaches=new Set();
 try{const hidden=JSON.parse(localStorage.getItem(WIND_INFO_VISIBILITY_KEY)||'[]');if(Array.isArray(hidden))hiddenWindInfoBeaches=new Set(hidden.filter(n=>typeof n==='string'));}catch(e){}
