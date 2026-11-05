@@ -88,7 +88,7 @@ const beachCoords={
 "Maro (Málaga)":[36.7527,-3.835],
 "Cala Murada (Mallorca)":[39.4516,3.277275],
 "Cala San Vicent":[39.9216,3.0551],
-"Cala Serena":[39.3724,3.238],
+"Cala Serena":[39.37958,3.24170],
 "Caló des Borgit":[39.3626,3.2026],
 "Cala Torta":[39.7506,3.418048],
 "Cala Bota":[39.47531,3.286237],
@@ -307,13 +307,18 @@ const beachSeaBearing={
  "El Bombo (Mijas)":205,
  "Playa del Castillo (Fuengirola)":205,
  "Cala Murada (Mallorca)":90,
- "Cala San Vicent":45
+ "Cala San Vicent":45,
+ "Cala Domingos":97,
+ "Cala Serena":135,
+ "Cala Torta":26,
+ "Cala Mitjana":45,
+ "Portocolom":135
 };
 
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
 const COAST_CACHE_KEY='supfacil_coast_orientation_v2';
 let externalCoastBearing={};
-function getBeachSeaBearing(name){if(name==='Cala San Vicent'&&Number.isFinite(beachSeaBearing[name]))return beachSeaBearing[name];return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
+function getBeachSeaBearing(name){const fixed=['Cala San Vicent','Cala Domingos','Cala Serena','Cala Torta','Cala Mitjana','Portocolom'];if(fixed.includes(name)&&Number.isFinite(beachSeaBearing[name]))return beachSeaBearing[name];const coords=beachCoords[name];if(coords&&Math.abs(coords[0]-36.7307652)<0.012&&Math.abs(coords[1]+2.1455119)<0.012)return 166;return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
 async function loadExternalCoastOrientation(name){
  const coords=beachCoords[name];if(!coords)return null;
  let cache={};
