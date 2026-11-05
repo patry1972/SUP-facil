@@ -184,7 +184,6 @@ function updateWindMap(name,wind,dir,gust,stamp){
 
 const LOCATION_STORAGE_KEY='supfacil_corrected_beach_locations_v1';
 const ADDED_BEACHES_KEY='supfacil_added_beaches_v1';
-loadAutoArrowBeachNames();
 try{const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');let migrated=false;Object.entries(added).forEach(([n,v])=>{if(!n||!v)return;const clean=cleanLegacyBeachName(n);if(clean!==n){added[clean]=v;delete added[n];migrated=true;}if(Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[clean]=v.profile||{note:'Nueva playa añadida · pendiente de validar',detail:'Ubicación añadida por el usuario. Aún no hay observaciones suficientes sobre viento, oleaje, corrientes ni entrada/salida. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[clean]=v.coords;beachProvince[clean]=v.province||'Málaga';}});if(migrated)localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){}
 try{const saved=JSON.parse(localStorage.getItem(LOCATION_STORAGE_KEY)||'{}');if(saved['Playa de Enmedio']&&!saved['Playa de Calabajío (Almuñécar)']){saved['Playa de Calabajío (Almuñécar)']=saved['Playa de Enmedio'];delete saved['Playa de Enmedio'];localStorage.setItem(LOCATION_STORAGE_KEY,JSON.stringify(saved));}Object.keys(saved).forEach(n=>{if(beachCoords[n]&&Array.isArray(saved[n])&&saved[n].length===2&&saved[n].every(Number.isFinite))beachCoords[n]=saved[n];});}catch(e){}
 rebuildBeachSelect(sel.value);
@@ -434,9 +433,10 @@ async function loadExternalCoastOrientation(name){
 const AUTO_ARROW_CACHE_KEY='supfacil_auto_arrow_water_point_v1';
 let autoArrowBeachNames=new Set();
 function loadAutoArrowBeachNames(){try{const saved=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.keys(saved||{}).forEach(n=>autoArrowBeachNames.add(n));}catch(e){}}
+loadAutoArrowBeachNames();
 async function findAutoArrowPoint(name,bearing){
  const coords=beachCoords[name];if(!coords||!Number.isFinite(bearing))return null;
- let cache={};try{cache=JSON.parse(localStorage.getItem(AUTO_ARROW_CACHE_KEY)||'{}');const hit=cache[name];if(hit&&Array.isArray(hit.point)&&hit.point.length===2&&Date.now()-hit.time<30*86400000)return hit.point;}catch(e){}
+ let cache={};try{cache=JSON.parse(localStorage.getItem(AUTO_ARROW_CACHE_KEY)||'{}');const hit=cache[name];if(hit&&Array.isArray(hit.point)&&hit.point.length===2&&Array.isArray(hit.coords)&&hit.coords[0]===coords[0]&&hit.coords[1]===coords[1]&&Date.now()-hit.time<30*86400000)return hit.point;}catch(e){}
  const lat=coords[0],lon=coords[1],distances=[250,400,550,700,900,1150,1450];
  let rings=[];
  try{
@@ -453,7 +453,7 @@ async function findAutoArrowPoint(name,bearing){
   }if(ringHit)hit=!hit;}
   return hit;
  };
- for(const distance of distances){const point=windDestination(coords,bearing,distance);const land=inside(point);if(land===false){try{cache[name]={point,time:Date.now()};localStorage.setItem(AUTO_ARROW_CACHE_KEY,JSON.stringify(cache));}catch(e){}return point;}}
+ for(const distance of distances){const point=windDestination(coords,bearing,distance);const land=inside(point);if(land===false){try{cache[name]={point,coords:coords.slice(),time:Date.now()};localStorage.setItem(AUTO_ARROW_CACHE_KEY,JSON.stringify(cache));}catch(e){}return point;}}
  // Si el servicio cartográfico no responde, la orientación OSM sigue siendo una
  // aproximación: usamos un desplazamiento amplio, sin tocar las playas existentes.
  if(!rings.length){const fallback=windDestination(coords,bearing,700);try{cache[name]={point:fallback,time:Date.now()};localStorage.setItem(AUTO_ARROW_CACHE_KEY,JSON.stringify(cache));}catch(e){}return fallback;}
