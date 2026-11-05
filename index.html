@@ -100,6 +100,7 @@ const beachCoords={
 "Cala Domingos":[39.4569,3.27851],
 "Playa Cabopino":[36.48414,-4.741936]
 };
+const BUILT_IN_BEACH_NAMES=new Set(Object.keys(beachCoords));
 let beachMap=null,beachMarkers={},mapReady=false,editingLocation=false,addingBeach=false,pendingCoords=null,originalCoords=null;
 let windMapArrow=[],windMapLabel=null,windMapNameControl=null,windMapInfoControl=null;
 // Distancia desde el marcador para colocar la flecha claramente sobre el agua.
@@ -194,7 +195,7 @@ try{const details=JSON.parse(localStorage.getItem(FAVORITE_DETAILS_KEY)||'{}');i
 try{const savedFavorites=JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY)||'[]');if(Array.isArray(savedFavorites)){favoriteBeaches=[...new Set(savedFavorites.filter(n=>typeof n==='string').map(n=>cleanLegacyBeachName(n)).filter(n=>beaches[n]||favoriteBeachDetails[n]))];localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));}}catch(e){}
 // Las playas guardadas por el usuario se cargan después del primer listado; reconstruimos ahora el selector para incluirlas.
 rebuildBeachSelect(sel.value);
-function saveFavoriteBeaches(){Object.keys(favoriteBeachDetails).forEach(n=>autoArrowBeachNames.add(n));try{localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));localStorage.setItem(FAVORITE_DETAILS_KEY,JSON.stringify(favoriteBeachDetails));const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.entries(favoriteBeachDetails).forEach(([n,v])=>{if(v&&Array.isArray(v.coords))added[n]={coords:v.coords,profile:v.profile||beaches[n],province:v.province||beachProvince[n]||'Guardada por ti'};});localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){statusMessage('El navegador no ha permitido guardar los favoritos. Comprueba el espacio y los permisos de almacenamiento.');}}
+function saveFavoriteBeaches(){Object.keys(favoriteBeachDetails).forEach(n=>{if(!BUILT_IN_BEACH_NAMES.has(n))autoArrowBeachNames.add(n);});try{localStorage.setItem(FAVORITES_STORAGE_KEY,JSON.stringify(favoriteBeaches));localStorage.setItem(FAVORITE_DETAILS_KEY,JSON.stringify(favoriteBeachDetails));const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.entries(favoriteBeachDetails).forEach(([n,v])=>{if(v&&Array.isArray(v.coords))added[n]={coords:v.coords,profile:v.profile||beaches[n],province:v.province||beachProvince[n]||'Guardada por ti'};});localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){statusMessage('El navegador no ha permitido guardar los favoritos. Comprueba el espacio y los permisos de almacenamiento.');}}
 function favoriteMarkerIcon(){
  return L.divIcon({className:'favorite-beach-marker',html:'<span style="display:block;color:#ffdf00;font-size:38px;line-height:38px;font-family:Arial,sans-serif;-webkit-text-stroke:1px #7a4b00;text-shadow:0 0 3px #fff,0 0 7px #ffb700,0 2px 3px #243b45">★</span>',iconSize:[38,38],iconAnchor:[19,19]});
 }
@@ -432,7 +433,7 @@ async function loadExternalCoastOrientation(name){
 // Las playas del catálogo conservan sus ajustes manuales actuales.
 const AUTO_ARROW_CACHE_KEY='supfacil_auto_arrow_water_point_v1';
 let autoArrowBeachNames=new Set();
-function loadAutoArrowBeachNames(){try{const saved=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.keys(saved||{}).forEach(n=>autoArrowBeachNames.add(n));}catch(e){}}
+function loadAutoArrowBeachNames(){try{const saved=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.keys(saved||{}).forEach(n=>{if(!BUILT_IN_BEACH_NAMES.has(n))autoArrowBeachNames.add(n);});}catch(e){}}
 loadAutoArrowBeachNames();
 async function findAutoArrowPoint(name,bearing){
  const coords=beachCoords[name];if(!coords||!Number.isFinite(bearing))return null;
