@@ -297,9 +297,11 @@ async function searchOtherBeach(){
     if(beaches[name]&&beachCoords[name]&&(Math.abs(beachCoords[name][0]-item.latitude)>.01||Math.abs(beachCoords[name][1]-item.longitude)>.01))name+=' ('+[item.admin1,item.country].filter(Boolean).join(', ')+')';
     beaches[name]={note:'Playa localizada · pendiente de validar',detail:'Ubicación encontrada mediante búsqueda geográfica. La orientación, la exposición, las corrientes, la marea y la dificultad de entrada/salida aún no están verificadas. La valoración es orientativa y prudente: comprueba el mar real desde la orilla.',risk:1};
     beachCoords[name]=[item.latitude,item.longitude];beachProvince[name]=item.admin1||item.country||'Guardada por ti';
+    // Toda playa nueva entra en el sistema automático, sin alterar el catálogo existente.
+    if(!BUILT_IN_BEACH_NAMES.has(name))autoArrowBeachNames.add(name);
+    try{const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');added[name]={coords:beachCoords[name].slice(),profile:beaches[name],province:beachProvince[name]};localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){}
     if(mapReady&&beachMap){refreshMarker(name);}
     rebuildBeachSelect(name);
-    const exp=document.querySelector('input[name="exposure"][value="exposed"]');if(exp)exp.checked=true;
     results.innerHTML='<p class="notice">Playa seleccionada. Cargando previsión automática… Puedes guardarla con «Añadir a favoritos» para conservar su nombre y ubicación.</p>';
     sel.dispatchEvent(new Event('change'));
     if(mapReady&&beachMap){refreshMarker(name);beachMap.setView(beachCoords[name],12);setTimeout(()=>beachMap.invalidateSize(),100);}
@@ -346,7 +348,7 @@ const beachSeaBearing={
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
 const COAST_CACHE_KEY='supfacil_coast_orientation_v2';
 let externalCoastBearing={};
-function getBeachSeaBearing(name){const fixed=['Cala San Vicent','Cala Domingos','Cala Serena','Cala Torta','Cala Mitjana','Portocolom','Los Boliches (Fuengirola)','Playa del Castillo (Fuengirola)'];if(fixed.includes(name)&&Number.isFinite(beachSeaBearing[name]))return beachSeaBearing[name];const coords=beachCoords[name];if(coords&&Math.abs(coords[0]-36.7307652)<0.012&&Math.abs(coords[1]+2.1455119)<0.012)return 166;return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
+function getBeachSeaBearing(name){const fixed=['Cala San Vicent','Cala Domingos','Cala Serena','Cala Torta','Cala Mitjana','Portocolom','Los Boliches (Fuengirola)','Playa del Castillo (Fuengirola)'];if(fixed.includes(name)&&Number.isFinite(beachSeaBearing[name]))return beachSeaBearing[name];const coords=beachCoords[name];if(/genoveses/i.test(name))return 110;if(coords&&Math.abs(coords[0]-36.7307652)<0.012&&Math.abs(coords[1]+2.1455119)<0.012)return 166;return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
 async function loadExternalCoastOrientation(name){
  const coords=beachCoords[name];if(!coords)return null;
  let cache={};
@@ -471,7 +473,7 @@ async function findAutoArrowPoint(name,bearing){
 function assessWaveExposure(name,waveDir){const facing=getBeachSeaBearing(name);if(!Number.isFinite(waveDir)||!Number.isFinite(facing))return {penalty:0,label:'protección no determinada',certainty:'unknown'};const diff=angleDiff(waveDir,facing);if(diff<=45)return {penalty:8,label:'oleaje de cara a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};if(diff<=90)return {penalty:4,label:'oleaje oblicuo respecto a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};return {penalty:0,label:'oleaje no directamente enfrentado a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};}
 function updateWindRelation(windDir){
  const note=$('windRelationNote');
- if(!Number.isFinite(windDir)){note.textContent='La previsión no incluye dirección del viento; selecciona la relación manualmente.';return;}
+ if(!Number.isFinite(windDir)){document.querySelectorAll('input[name="winddir"]').forEach(r=>r.checked=false);note.textContent='La previsión no incluye dirección del viento; selecciona la relación manualmente.';return;}
  const facing=getBeachSeaBearing(sel.value);
  if(!Number.isFinite(facing)){document.querySelectorAll('input[name="winddir"]').forEach(r=>r.checked=false);note.textContent='Orientación de esta playa aún no validada: selecciona manualmente si el viento viene del mar, es lateral o viene de tierra. Dirección prevista: '+compassLabel(windDir)+' ('+Math.round(windDir)+'°).';return;}
  const diff=angleDiff(windDir,facing);
