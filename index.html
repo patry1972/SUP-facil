@@ -87,7 +87,7 @@ const beachCoords={
 "El Bombo (Mijas)":[36.501512,-4.679224],
 "Maro (Málaga)":[36.7527,-3.835],
 "Cala Murada (Mallorca)":[39.4516,3.277275],
-"Cala San Vicent":[39.9225,3.055],
+"Cala San Vicent":[39.9216,3.0551],
 "Cala Serena":[39.3724,3.238],
 "Caló des Borgit":[39.3626,3.2026],
 "Cala Torta":[39.7506,3.418048],
@@ -157,7 +157,7 @@ function updateWindMap(name,wind,dir,gust,stamp){
 
 const LOCATION_STORAGE_KEY='supfacil_corrected_beach_locations_v1';
 const ADDED_BEACHES_KEY='supfacil_added_beaches_v1';
-try{const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.entries(added).forEach(([n,v])=>{if(n&&v&&Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[n]=v.profile||{note:'Nueva playa añadida · pendiente de validar',detail:'Ubicación añadida por el usuario. Aún no hay observaciones suficientes sobre viento, oleaje, corrientes ni entrada/salida. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[n]=v.coords;beachProvince[n]=v.province||'Málaga';}});}catch(e){}
+try{const added=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');let migrated=false;Object.entries(added).forEach(([n,v])=>{if(!n||!v)return;const clean=n.replace(/^Consulta temporal:\\s*/,'');if(clean!==n){added[clean]=v;delete added[n];migrated=true;}if(Array.isArray(v.coords)&&v.coords.length===2&&v.coords.every(Number.isFinite)){beaches[clean]=v.profile||{note:'Nueva playa añadida · pendiente de validar',detail:'Ubicación añadida por el usuario. Aún no hay observaciones suficientes sobre viento, oleaje, corrientes ni entrada/salida. Comprueba las condiciones reales antes de decidir.',risk:1};beachCoords[clean]=v.coords;beachProvince[clean]=v.province||'Málaga';}});if(migrated)localStorage.setItem(ADDED_BEACHES_KEY,JSON.stringify(added));}catch(e){}
 try{const saved=JSON.parse(localStorage.getItem(LOCATION_STORAGE_KEY)||'{}');if(saved['Playa de Enmedio']&&!saved['Playa de Calabajío (Almuñécar)']){saved['Playa de Calabajío (Almuñécar)']=saved['Playa de Enmedio'];delete saved['Playa de Enmedio'];localStorage.setItem(LOCATION_STORAGE_KEY,JSON.stringify(saved));}Object.keys(saved).forEach(n=>{if(beachCoords[n]&&Array.isArray(saved[n])&&saved[n].length===2&&saved[n].every(Number.isFinite))beachCoords[n]=saved[n];});}catch(e){}
 rebuildBeachSelect(sel.value);
 const FAVORITES_STORAGE_KEY='supfacil_favorite_beaches_v1';
@@ -306,13 +306,14 @@ const beachSeaBearing={
  "Los Boliches (Fuengirola)":205,
  "El Bombo (Mijas)":205,
  "Playa del Castillo (Fuengirola)":205,
- "Cala Murada (Mallorca)":90
+ "Cala Murada (Mallorca)":90,
+ "Cala San Vicent":45
 };
 
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
 const COAST_CACHE_KEY='supfacil_coast_orientation_v2';
 let externalCoastBearing={};
-function getBeachSeaBearing(name){return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
+function getBeachSeaBearing(name){if(name==='Cala San Vicent'&&Number.isFinite(beachSeaBearing[name]))return beachSeaBearing[name];return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
 async function loadExternalCoastOrientation(name){
  const coords=beachCoords[name];if(!coords)return null;
  let cache={};
