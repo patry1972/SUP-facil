@@ -25,7 +25,7 @@
 <div class="field"><div class="topline"><label for="period">Periodo de ola</label><span class="value" id="periodv">3 s</span></div><input id="period" type="range" min="2" max="12" step="1" value="3"><div class="ticks"><span>2</span><span>5</span><span>8</span><span>12 s</span></div></div>
 <div class="field"><div class="topline"><label for="energy">Energía del oleaje (kJ)</label><span class="value" id="energyv">Calculando…</span></div><input id="energy" type="range" min="0" max="150" step="1" value="0" tabindex="-1" aria-readonly="true"><div class="ticks"><span>0</span><span>40</span><span>80</span><span>120</span><span>150 kJ</span></div><p class="profile">Estimación automática experimental a partir de altura y periodo de ola. No es un dato oficial de Windy: compáralo con Windy.app para comprobar las diferencias antes de calibrar el baremo.</p></div>
 <div class="field"><span class="label">Viento respecto a la playa</span><div class="choices"><label class="choice"><input type="radio" name="winddir" value="onshore"> Del mar hacia tierra</label><label class="choice"><input type="radio" name="winddir" value="cross"> Lateral a la playa</label><label class="choice"><input type="radio" name="winddir" value="offshore"> De tierra hacia el mar — precaución extra</label></div><p id="windRelationNote" class="profile" style="margin-top:6px">Sin selección automática validada: si no hay datos fiables, marca manualmente la exposición y la dirección del viento.</p></div>
-<div class="field"><span class="label">Exposición al oleaje</span><p class="profile">Sin datos fiables, no se aplica ninguna penalización. Puedes elegirla manualmente.</p><div class="choices"><label class="choice"><input type="radio" name="exposure" value="sheltered"> Playa resguardada</label><label class="choice"><input type="radio" name="exposure" value="some"> Algo expuesta</label><label class="choice"><input type="radio" name="exposure" value="exposed"> Expuesta al oleaje</label></div></div>
+<div class="field"><span class="label">Exposición al oleaje</span><p class="profile">En las playas nuevas, SUP Fácil estima la exposición según la orientación de la costa y la dirección del oleaje. Si faltan datos fiables, no aplica una penalización y puedes elegirla manualmente.</p><div class="choices"><label class="choice"><input type="radio" name="exposure" value="sheltered"> Playa resguardada</label><label class="choice"><input type="radio" name="exposure" value="some"> Algo expuesta</label><label class="choice"><input type="radio" name="exposure" value="exposed"> Expuesta al oleaje</label></div></div>
 <button id="calc">Calcular semáforo orientativo</button></div></details>
 
 <footer>SUP Fácil · versión de prueba v0.3.2 · panel manual plegable · mapa interactivo y previsión automática</footer>
@@ -470,7 +470,29 @@ async function findAutoArrowPoint(name,bearing){
  if(!rings.length){const fallback=windDestination(coords,bearing,700);try{cache[name]={point:fallback,time:Date.now()};localStorage.setItem(AUTO_ARROW_CACHE_KEY,JSON.stringify(cache));}catch(e){}return fallback;}
  return null;
 }
-function assessWaveExposure(name,waveDir){const facing=getBeachSeaBearing(name);if(!Number.isFinite(waveDir)||!Number.isFinite(facing))return {penalty:0,label:'protección no determinada',certainty:'unknown'};const diff=angleDiff(waveDir,facing);if(diff<=45)return {penalty:8,label:'oleaje de cara a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};if(diff<=90)return {penalty:4,label:'oleaje oblicuo respecto a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};return {penalty:0,label:'oleaje no directamente enfrentado a la costa',certainty:Number.isFinite(externalCoastBearing[name])?'estimación externa':'orientación aproximada'};}
+function assessWaveExposure(name,waveDir){
+ const facing=getBeachSeaBearing(name);
+ if(!Number.isFinite(waveDir)||!Number.isFinite(facing))return {category:null,penalty:0,label:'protección no determinada',certainty:'unknown'};
+ const diff=angleDiff(waveDir,facing),certainty=Number.isFinite(externalCoastBearing[name])?'geometría costera externa':'orientación aproximada';
+ if(diff<=45)return {category:'exposed',penalty:8,label:'oleaje de cara a la costa',certainty,diff,facing};
+ if(diff<=90)return {category:'some',penalty:4,label:'oleaje oblicuo respecto a la costa',certainty,diff,facing};
+ return {category:'sheltered',penalty:0,label:'oleaje no directamente enfrentado a la costa',certainty,diff,facing};
+}
+function updateAutomaticExposure(name,waveDir){
+ // Conservamos intactos los ajustes manuales de todas las playas del catálogo original.
+ if(BUILT_IN_BEACH_NAMES.has(name))return;
+ const radios=[...document.querySelectorAll('input[name="exposure"]')];
+ const result=assessWaveExposure(name,waveDir);
+ radios.forEach(r=>r.checked=!!result.category&&r.value===result.category);
+ const note=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
+ if(!note)return;
+ if(!result.category){
+  note.textContent='No hay datos suficientes de oleaje u orientación costera para estimar la exposición. No se aplica penalización; puedes elegirla manualmente.';
+  return;
+ }
+ const labels={sheltered:'resguardada respecto al oleaje previsto',some:'algo expuesta al oleaje previsto',exposed:'expuesta al oleaje previsto'};
+ note.textContent='Estimación automática: playa '+labels[result.category]+'. '+result.label+'. Basada en '+result.certainty+' ('+Math.round(result.facing)+'° hacia mar). Es orientativa y no detecta todos los cabos, bajos ni la rompiente local.';
+}
 function updateWindRelation(windDir){
  const note=$('windRelationNote');
  if(!Number.isFinite(windDir)){document.querySelectorAll('input[name="winddir"]').forEach(r=>r.checked=false);note.textContent='La previsión no incluye dirección del viento; selecciona la relación manualmente.';return;}
@@ -499,7 +521,7 @@ let forecastRequestId=0, activeForecastData=null, activeWaveDirection=null;
 function summarizeBestHours(){
  const box=$('bestHours'); if(!box||!activeForecastData)return;
  const {weather,marine}=activeForecastData, times=weather.hourly?.time||[], mtimes=marine.hourly?.time||[];
- const facing=beachSeaBearing[sel.value], now=new Date();
+ const facing=getBeachSeaBearing(sel.value), now=new Date();
  const valid=n=>Number.isFinite(n), candidates=[];
  const daylight=new Map();
  const daily=weather.daily||{};
@@ -511,7 +533,7 @@ function summarizeBestHours(){
   const w=weather.hourly.wind_speed_10m?.[i], g=weather.hourly.wind_gusts_10m?.[i], wd=weather.hourly.wind_direction_10m?.[i];
   const h=marine.hourly.wave_height?.[mi], p=marine.hourly.wave_period?.[mi], waveDir=marine.hourly.wave_direction?.[mi];
   if(!valid(w)||!valid(h))continue;
-  const ex=document.querySelector('input[name="exposure"]:checked')?.value||'unknown';
+  const ex=BUILT_IN_BEACH_NAMES.has(sel.value)?(document.querySelector('input[name="exposure"]:checked')?.value||'unknown'):(assessWaveExposure(sel.value,waveDir).category||'unknown');
    const ww=Math.max(0,Math.min(15,Math.round(w*2)/2)), gg=Math.max(0,Math.min(20,Math.round((valid(g)?g:w)*2)/2));
    const hh=Math.max(0,Math.min(1.5,Math.round(h*10)/10)), pp=valid(p)?Math.max(2,Math.min(12,Math.round(p))):0;
    const wp=ww<=3?0:ww<=4?3:ww<=5?7:ww<=6?12:ww<=7?18:ww<=8?25:ww<=10?30:40;
@@ -596,6 +618,7 @@ function applyForecastHour(index){
  if(valid(period)){$('period').value=Math.max(2,Math.min(12,Math.round(period)));$('periodv').textContent=$('period').value+' s';}
  const estimatedEnergy=setEstimatedEnergy(wave,period);
  updateWindRelation(windDir);
+ updateAutomaticExposure(sel.value,waveDir);
  updateWindMap(sel.value,wind,windDir,gust,stamp);
  const box=$('forecastStatus');
  const wdText=valid(windDir)?compassLabel(windDir)+' ('+Math.round(windDir)+'°)':'sin dato';
