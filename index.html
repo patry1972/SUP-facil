@@ -674,7 +674,7 @@ async function loadForecastForSelectedBeach(){
    const valid=n=>Number.isFinite(n);
    let score=null;
    if(valid(w)&&valid(h)){
-    const ex=document.querySelector('input[name="exposure"]:checked')?.value||'unknown';
+    const ex=BUILT_IN_BEACH_NAMES.has(sel.value)?(document.querySelector('input[name="exposure"]:checked')?.value||'unknown'):(assessWaveExposure(sel.value,mi>=0?mh.wave_direction?.[mi]:undefined).category||'unknown');
     const ww=Math.max(0,Math.min(15,Math.round(w*2)/2)), gg=Math.max(0,Math.min(20,Math.round((valid(g)?g:w)*2)/2));
     const hh=Math.max(0,Math.min(1.5,Math.round(h*10)/10)), pp=valid(p)?Math.max(2,Math.min(12,Math.round(p))):0;
     const wp=ww<=3?0:ww<=4?3:ww<=5?7:ww<=6?12:ww<=7?18:ww<=8?25:ww<=10?30:40;
