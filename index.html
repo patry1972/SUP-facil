@@ -549,7 +549,12 @@ function updateAutomaticExposure(name,waveDir){
   const note=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
   if(note)note.textContent='Analizando la forma de la costa y el abrigo en 16 direcciones…';
   loadGeographicFetchExposure(name).then(data=>{
-   if(!data||sel.value!==name)return;
+   if(sel.value!==name)return;
+   if(!data){
+    const pendingNote=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
+    if(pendingNote)pendingNote.textContent='No se pudo obtener la geometría costera para esta playa. La exposición queda sin determinar y no se aplica penalización automática.';
+    return;
+   }
    const hourIndex=Number($('forecastHour')?.value);
    if(Number.isInteger(hourIndex)&&activeForecastData)applyForecastHour(hourIndex);
    else updateAutomaticExposure(name,waveDir);
@@ -565,7 +570,7 @@ function updateAutomaticExposure(name,waveDir){
   return;
  }
  const labels={sheltered:'resguardada respecto al oleaje previsto',some:'algo expuesta al oleaje previsto',exposed:'expuesta al oleaje previsto'};
- note.textContent='Estimación automática: playa '+labels[result.category]+'. '+result.label+'. Basada en '+result.certainty+' ('+Math.round(result.facing)+'° hacia mar). Es orientativa y no detecta todos los cabos, bajos ni la rompiente local.';
+ note.textContent='Estimación automática: playa '+labels[result.category]+'. '+result.label+'. Fetch estimado: '+(Number.isFinite(result.fetchKm)?result.fetchKm.toFixed(1)+' km':'sin dato')+'. Cálculo geográfico orientativo; no detecta todos los bajos, arrecifes ni la rompiente local.';
 }
 function updateWindRelation(windDir){
  const note=$('windRelationNote');
