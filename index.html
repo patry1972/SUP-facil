@@ -601,9 +601,33 @@ const GEOGRAPHIC_PROTECTION={
 };
 function assessGeographicProtection(name){
  const item=GEOGRAPHIC_PROTECTION[name];
- if(!item||item.category==='unknown')return {category:null,penalty:0,label:item?.label||'protección geográfica pendiente de validar',certainty:'unknown'};
- const penalty=item.category==='exposed'?8:item.category==='some'?4:0;
- return {category:item.category,penalty,label:item.label,certainty:'clasificación geográfica local'};
+ // Las clasificaciones ya contrastadas tienen prioridad.
+ if(item&&item.category&&item.category!=='unknown'){
+  const penalty=item.category==='exposed'?8:item.category==='some'?4:0;
+  return {category:item.category,penalty,label:item.label,certainty:'clasificación geográfica local'};
+ }
+ // Si existe un análisis de costa guardado, usamos la distancia a tierra
+ // en los rumbos que quedan delante de la playa (sector marino).
+ let saved={};
+ try{saved=JSON.parse(localStorage.getItem(FETCH_EXPOSURE_CACHE_KEY)||'{}');}catch(e){}
+ const data=saved[name],facing=getBeachSeaBearing(name);
+ if(data&&Array.isArray(data.fetch)&&Number.isFinite(facing)){
+  const sectorDistances=data.fetch.map((distance,index)=>({distance,bearing:index*22.5}))
+   .filter(x=>Number.isFinite(x.distance)&&angleDiff(x.bearing,facing)<=67.5)
+   .map(x=>x.distance);
+  const close=sectorDistances.filter(distance=>distance<=4000).length;
+  const category=close>=4?'sheltered':close>=2?'some':'exposed';
+  const labels={
+   sheltered:'varios rumbos del mar quedan limitados por tierra cercana; abrigo geográfico apreciable',
+   some:'hay cierto abrigo lateral, aunque parte del frente queda abierto al mar',
+   exposed:'el frente marino presenta bastante recorrido abierto y poco abrigo cercano'
+  };
+  const penalty=category==='exposed'?8:category==='some'?4:0;
+  return {category,penalty,label:labels[category],certainty:'estimación automática por geometría costera'};
+ }
+ // Nunca dejamos los controles sin marcar: estimación inicial prudente y
+ // provisional hasta que haya geometría costera suficiente.
+ return {category:'some',penalty:4,label:(item?.label&&item.category==='unknown'?item.label+'; ':'')+'estimación provisional: algo expuesta, pendiente de afinar con la geometría costera',certainty:'estimación provisional'};
 }
 let manualExposureOverride=false;
 function protectionForCalculation(name){
@@ -620,12 +644,9 @@ function updateAutomaticExposure(name){
  const result=assessGeographicProtection(name);
  radios.forEach(r=>r.checked=!!result.category&&r.value===result.category);
  if(!note)return;
- if(!result.category){
-  note.textContent=result.label+'. No se aplica penalización automática. Si conoces bien esta playa, puedes indicar su protección manualmente.';
-  return;
- }
- const labels={sheltered:'protegida',some:'algo expuesta',exposed:'expuesta'};
- note.textContent='Clasificación geográfica de referencia: playa '+labels[result.category]+'. '+result.label+'. Es una característica fija; no cambia con el viento, el oleaje previsto ni la hora. No significa que las condiciones del día sean siempre tranquilas.';
+ const labels={sheltered:'resguardada',some:'poco expuesta',exposed:'expuesta'};
+ const provisional=result.certainty==='estimación provisional';
+ note.textContent=(provisional?'Estimación inicial: ':'Clasificación geográfica de referencia: ')+'playa '+labels[result.category]+'. '+result.label+'. Es una característica fija; no cambia con el viento, el oleaje previsto ni la hora. No significa que las condiciones del día sean siempre tranquilas.';
 }
 function updateWindRelation(windDir){
  const note=$('windRelationNote');
