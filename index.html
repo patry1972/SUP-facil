@@ -471,6 +471,10 @@ async function findAutoArrowPoint(name,bearing){
  return null;
 }
 function assessWaveExposure(name,waveDir){
+ // La Herradura es una ensenada amplia: su protección geográfica no se debe
+ // deducir de un único rumbo de playa ni confundir con el oleaje del día.
+ // La altura, periodo y energía reales siguen penalizando la valoración.
+ if(/la herradura/i.test(name))return {category:'sheltered',penalty:0,label:'bahía resguardada por su configuración geográfica',certainty:'protección geográfica conocida'};
  const facing=getBeachSeaBearing(name);
  if(!Number.isFinite(waveDir)||!Number.isFinite(facing))return {category:null,penalty:0,label:'protección no determinada',certainty:'unknown'};
  const diff=angleDiff(waveDir,facing),certainty=Number.isFinite(externalCoastBearing[name])?'geometría costera externa':'orientación aproximada';
