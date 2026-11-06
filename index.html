@@ -571,24 +571,39 @@ async function loadGeographicFetchExposure(name){
  })().finally(()=>{delete fetchExposurePending[name];});
  return fetchExposurePending[name];
 }
+// Clasificación geográfica local y estable para playas del catálogo.
+// No depende de servicios externos, viento, oleaje ni hora de previsión.
+// Las playas sin valoración suficiente quedan explícitamente como no determinadas.
+const GEOGRAPHIC_PROTECTION={
+ "Las Doradas":{category:'some',label:'tramo de costa relativamente abierto, con cierto abrigo según el sector'},
+ "Torre del Pino":{category:'some',label:'costa con abrigo parcial por los salientes próximos'},
+ "La Herradura / Cotobro":{category:'sheltered',label:'bahía amplia y resguardada por su configuración geográfica'},
+ "Marina del Este":{category:'some',label:'zona parcialmente resguardada por la configuración del puerto y los salientes próximos'},
+ "Punta de la Mona":{category:'sheltered',label:'zona de calas y salientes que ofrecen abrigo geográfico'},
+ "Playa de Calabajío (Almuñécar)":{category:'some',label:'tramo de costa con abrigo parcial'},
+ "Playa Cabria":{category:'some',label:'tramo de costa con abrigo parcial'},
+ "Las Alberquillas (Maro)":{category:'sheltered',label:'cala resguardada por los relieves costeros próximos'},
+ "Los Boliches (Fuengirola)":{category:'exposed',label:'playa larga y abierta al mar, sin un abrigo geográfico importante'},
+ "El Bombo (Mijas)":{category:'exposed',label:'playa abierta al mar'},
+ "Maro (Málaga)":{category:'some',label:'costa con entrantes y relieves que ofrecen abrigo parcial'},
+ "Cala Murada (Mallorca)":{category:'unknown',label:'protección geográfica pendiente de validar'},
+ "Cala San Vicent":{category:'sheltered',label:'cala cerrada por relieves costeros que ofrecen abrigo'},
+ "Cala Serena":{category:'some',label:'pequeña cala con abrigo parcial'},
+ "Caló des Borgit":{category:'some',label:'cala con abrigo parcial; la exposición local debe comprobarse'},
+ "Cala Torta":{category:'exposed',label:'cala abierta al mar'},
+ "Cala Bota":{category:'some',label:'cala con abrigo parcial, pero abierta a movimiento de mar'},
+ "Cala Mitjana":{category:'exposed',label:'cala abierta al mar'},
+ "Portocolom":{category:'unknown',label:'protección de la zona de acceso pendiente de validar'},
+ "Playa del Castillo (Fuengirola)":{category:'exposed',label:'playa abierta al mar'},
+ "Playa del Cañuelo":{category:'some',label:'pequeña cala encajada entre relieves, con abrigo lateral pero abierta hacia el mar'},
+ "Cala Domingos":{category:'unknown',label:'protección geográfica pendiente de validar'},
+ "Playa Cabopino":{category:'exposed',label:'playa amplia y abierta al mar; el puerto cercano no protege todo el frente de playa'}
+};
 function assessGeographicProtection(name){
- // Protección estática: se calcula con la geometría costera y el sector de mar
- // hacia el que se abre la playa. No depende del viento, de la hora ni del oleaje.
- if(/la herradura/i.test(name))return {category:'sheltered',penalty:0,label:'bahía resguardada por su configuración geográfica',certainty:'protección geográfica conocida'};
- let saved={};try{saved=JSON.parse(localStorage.getItem(FETCH_EXPOSURE_CACHE_KEY)||'{}');}catch(e){}
- const data=saved[name],facing=getBeachSeaBearing(name);
- if(!data||!Array.isArray(data.fetch)||data.fetch.length!==16||!Number.isFinite(data.time)||Date.now()-data.time>FETCH_EXPOSURE_CACHE_MS||!Number.isFinite(facing))
-  return {category:null,penalty:0,label:'protección geográfica pendiente de calcular',certainty:'pending'};
- // Tomamos los nueve rumbos comprendidos en el semicírculo orientado hacia el mar.
- // La mediana evita que un único cabo o una línea de costa aislada distorsione el resultado.
- const sectorFetch=data.fetch.map((distance,sector)=>({distance,bearing:sector*22.5}))
-  .filter(item=>angleDiff(item.bearing,facing)<=90)
-  .map(item=>item.distance).filter(Number.isFinite).sort((a,b)=>a-b);
- if(sectorFetch.length<5)return {category:null,penalty:0,label:'geometría costera insuficiente',certainty:'unknown'};
- const median=sectorFetch[Math.floor(sectorFetch.length/2)],fetchKm=median/1000;
- if(fetchKm<10)return {category:'sheltered',penalty:0,label:'la forma de la costa bloquea buena parte del sector de mar',certainty:'análisis geográfico de 16 direcciones',fetchKm};
- if(fetchKm<30)return {category:'some',penalty:4,label:'la costa ofrece abrigo parcial, pero mantiene aperturas al mar',certainty:'análisis geográfico de 16 direcciones',fetchKm};
- return {category:'exposed',penalty:8,label:'la playa se abre a un sector amplio de mar',certainty:'análisis geográfico de 16 direcciones',fetchKm};
+ const item=GEOGRAPHIC_PROTECTION[name];
+ if(!item||item.category==='unknown')return {category:null,penalty:0,label:item?.label||'protección geográfica pendiente de validar',certainty:'unknown'};
+ const penalty=item.category==='exposed'?8:item.category==='some'?4:0;
+ return {category:item.category,penalty,label:item.label,certainty:'clasificación geográfica local'};
 }
 let manualExposureOverride=false;
 function protectionForCalculation(name){
@@ -603,33 +618,14 @@ function updateAutomaticExposure(name){
  const radios=[...document.querySelectorAll('input[name="exposure"]')];
  const note=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
  const result=assessGeographicProtection(name);
- if(result.certainty==='pending'){
-  radios.forEach(r=>r.checked=false);
-  if(note)note.textContent='Calculando la protección geográfica a partir de la forma de la costa…';
-  loadGeographicFetchExposure(name).then(data=>{
-   if(sel.value!==name)return;
-   if(!data){
-    const pendingNote=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
-    if(pendingNote)pendingNote.textContent='No se ha podido analizar la geometría costera de esta playa. La protección queda sin determinar y no se aplica penalización automática.';
-    return;
-   }
-   const resultNow=assessGeographicProtection(name);
-   radios.forEach(r=>r.checked=!!resultNow.category&&r.value===resultNow.category);
-   if(note)note.textContent=resultNow.category
-    ?'Estimación geográfica fija: playa '+({sheltered:'protegida',some:'algo expuesta',exposed:'expuesta'}[resultNow.category])+'. '+resultNow.label+'. Alcance mediano de costa: '+resultNow.fetchKm.toFixed(1)+' km. Esta clasificación no cambia con el viento ni con la hora; no significa que el mar esté siempre tranquilo.'
-    :'No hay datos suficientes para determinar la protección geográfica. No se aplica penalización automática.';
-   calculateSemaforo();
-  });
-  return;
- }
  radios.forEach(r=>r.checked=!!result.category&&r.value===result.category);
  if(!note)return;
  if(!result.category){
-  note.textContent='No hay datos geográficos suficientes para determinar la protección de esta playa. No se aplica penalización automática; puedes corregirla manualmente.';
+  note.textContent=result.label+'. No se aplica penalización automática. Si conoces bien esta playa, puedes indicar su protección manualmente.';
   return;
  }
  const labels={sheltered:'protegida',some:'algo expuesta',exposed:'expuesta'};
- note.textContent='Estimación geográfica fija: playa '+labels[result.category]+'. '+result.label+'. Alcance mediano de costa: '+result.fetchKm.toFixed(1)+' km. Esta clasificación no cambia con el viento ni con la hora; no significa que el mar esté siempre tranquilo.';
+ note.textContent='Clasificación geográfica de referencia: playa '+labels[result.category]+'. '+result.label+'. Es una característica fija; no cambia con el viento, el oleaje previsto ni la hora. No significa que las condiciones del día sean siempre tranquilas.';
 }
 function updateWindRelation(windDir){
  const note=$('windRelationNote');
