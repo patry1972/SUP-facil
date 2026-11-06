@@ -777,8 +777,8 @@ async function loadForecastForSelectedBeach(){
    group.appendChild(opt);
   });
   hourSelect.disabled=false;hourSelect.value=String(nearest);applyForecastHour(nearest);summarizeBestHours();
-  // La orientación costera se consulta en segundo plano y nunca bloquea la previsión.
-  loadExternalCoastOrientation(name).then(bearing=>{if(bearing!==null&&requestId===forecastRequestId){applyForecastHour(Number(hourSelect.value));summarizeBestHours();}});
+  // El abrigo geográfico se calcula en segundo plano para las 16 direcciones.
+  loadGeographicFetchExposure(name).then(data=>{if(data&&requestId===forecastRequestId){applyForecastHour(Number(hourSelect.value));summarizeBestHours();}});
  }catch(err){
   if(requestId!==forecastRequestId)return;
   box.textContent='No se pudo cargar la previsión automática ('+(err?.message||'error de conexión')+'). Comprueba la conexión y vuelve a seleccionar la playa; puedes introducir los datos manualmente.';
