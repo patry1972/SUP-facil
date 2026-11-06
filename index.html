@@ -104,7 +104,7 @@ const BUILT_IN_BEACH_NAMES=new Set(Object.keys(beachCoords));
 let beachMap=null,beachMarkers={},mapReady=false,editingLocation=false,addingBeach=false,pendingCoords=null,originalCoords=null;
 let windMapArrow=[],windMapLabel=null,windMapNameControl=null,windMapInfoControl=null;
 // Distancia desde el marcador para colocar la flecha claramente sobre el agua.
-const windArrowDistance={'Cala San Vicent':1100,'Cala Torta':1200,'Cala Mitjana':1200,'Cala Domingos':1100,'Portocolom':2500,'Los Boliches (Fuengirola)':900,'Playa del Castillo (Fuengirola)':900};
+const windArrowDistance={'Cala San Vicent':1100,'Cala Torta':1200,'Cala Mitjana':1200,'Cala Domingos':1100,'Portocolom':2500,'Los Boliches (Fuengirola)':900,'Playa del Castillo (Fuengirola)':900,'Playa del Cañuelo':650,'Playa Cabopino':650};
 const WIND_INFO_VISIBILITY_KEY='supfacil_wind_info_hidden_beaches_v2';
 let hiddenWindInfoBeaches=new Set();
 try{const hidden=JSON.parse(localStorage.getItem(WIND_INFO_VISIBILITY_KEY)||'[]');if(Array.isArray(hidden))hiddenWindInfoBeaches=new Set(hidden.filter(n=>typeof n==='string'));}catch(e){}
@@ -334,6 +334,8 @@ const beachSeaBearing={
  "Playa Cabria":200,
  "Las Alberquillas (Maro)":190,
  "Los Boliches (Fuengirola)":100,
+ "Playa del Cañuelo":180,
+ "Playa Cabopino":180,
  "El Bombo (Mijas)":205,
  "Playa del Castillo (Fuengirola)":100,
  "Cala Murada (Mallorca)":90,
@@ -496,7 +498,9 @@ async function loadGeographicFetchExposure(name){
   let rings=[];
   try{
    const delta=.58,geometry=encodeURIComponent(JSON.stringify({xmin:coords[1]-delta,ymin:coords[0]-delta,xmax:coords[1]+delta,ymax:coords[0]+delta,spatialReference:{wkid:4326}}));
-   const url='https://services7.arcgis.com/WSiUmUhlFx4CtMBB/arcgis/rest/services/GSHHS_GlobalCoastlines_HighResolution/FeatureServer/0/query?where=1%3D1&geometry='+geometry+'&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=true&outSR=4326&f=json';
+   // Generalizamos ligeramente la geometría y pedimos solo el identificador:
+   // reduce mucho la respuesta sin acortar el alcance de 60 km del análisis.
+   const url='https://services7.arcgis.com/WSiUmUhlFx4CtMBB/arcgis/rest/services/GSHHS_GlobalCoastlines_HighResolution/FeatureServer/0/query?where=1%3D1&geometry='+geometry+'&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=OBJECTID&returnGeometry=true&outSR=4326&maxAllowableOffset=0.0005&geometryPrecision=5&resultRecordCount=5000&f=json';
    const response=await fetch(url,{headers:{'Accept':'application/json'}});
    if(!response.ok)return null;
    const data=await response.json();rings=(data.features||[]).flatMap(f=>f.geometry?.rings||[]);
