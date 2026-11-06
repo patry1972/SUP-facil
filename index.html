@@ -495,6 +495,46 @@ async function loadGeographicFetchExposure(name){
   let facing=getBeachSeaBearing(name);
   if(!Number.isFinite(facing))facing=await loadExternalCoastOrientation(name);
   if(!Number.isFinite(facing))return null;
+  // Primera fuente: líneas de costa de OpenStreetMap. Calculamos la distancia
+  // hasta tierra en 16 rumbos mediante intersecciones; si falla, usamos ArcGIS.
+  const lat0=coords[0],lon0=coords[1],cosLat=Math.cos(lat0*Math.PI/180);
+  const seed=windDestination(coords,facing,300);
+  const ox=(seed[1]-lon0)*111320*cosLat,oy=(seed[0]-lat0)*111320;
+  const cross=(ax,ay,bx,by)=>ax*by-ay*bx;
+  const osmQuery='[out:json][timeout:25];way(around:65000,'+lat0+','+lon0+')[natural=coastline];out geom;';
+  const osmServers=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+  for(const server of osmServers){
+   try{
+    const response=await fetch(server+'?data='+encodeURIComponent(osmQuery),{headers:{'Accept':'application/json'}});
+    if(!response.ok)continue;
+    const data=await response.json();
+    const lines=(data.elements||[]).map(w=>w.geometry||[]).filter(g=>g.length>1);
+    if(!lines.length)continue;
+    const fetch=[];
+    for(let sector=0;sector<16;sector++){
+     const angle=sector*22.5*Math.PI/180,rx=Math.sin(angle),ry=Math.cos(angle);
+     let nearest=60000;
+     for(const line of lines){
+      for(let j=1;j<line.length;j++){
+       const a=line[j-1],b=line[j];
+       const ax=(a.lon-lon0)*111320*cosLat-ox,ay=(a.lat-lat0)*111320-oy;
+       const bx=(b.lon-lon0)*111320*cosLat-ox,by=(b.lat-lat0)*111320-oy;
+       const sx=bx-ax,sy=by-ay,den=cross(rx,ry,sx,sy);
+       if(Math.abs(den)<1e-8)continue;
+       const t=cross(ax,ay,sx,sy)/den,u=cross(ax,ay,rx,ry)/den;
+       if(t>=0&&t<nearest&&u>=0&&u<=1)nearest=t;
+      }
+     }
+     fetch.push(Math.max(0,Math.min(60000,nearest)));
+    }
+    if(fetch.some(v=>v<60000)){
+     const result={fetch,seed,time:Date.now(),method:'openstreetmap-coastline-rays-16-directions'};
+     saved[name]=result;
+     try{localStorage.setItem(FETCH_EXPOSURE_CACHE_KEY,JSON.stringify(saved));}catch(e){}
+     return result;
+    }
+   }catch(e){}
+  }
   let rings=[];
   try{
    const delta=.58,geometry=encodeURIComponent(JSON.stringify({xmin:coords[1]-delta,ymin:coords[0]-delta,xmax:coords[1]+delta,ymax:coords[0]+delta,spatialReference:{wkid:4326}}));
@@ -549,6 +589,12 @@ function updateAutomaticExposure(name,waveDir){
  if(manualExposureOverride)return;
  const radios=[...document.querySelectorAll('input[name="exposure"]')];
  const result=assessWaveExposure(name,waveDir);
+ if(result.certainty==='unknown'){
+  radios.forEach(r=>r.checked=false);
+  const note=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
+  if(note)note.textContent='La previsión no aporta dirección del oleaje para esta hora. La protección geográfica no puede cruzarse con el oleaje previsto; prueba otra hora o selecciona la exposición manualmente.';
+  return;
+ }
  if(result.certainty==='pending'){
   const note=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
   if(note)note.textContent='Analizando la forma de la costa y el abrigo en 16 direcciones…';
