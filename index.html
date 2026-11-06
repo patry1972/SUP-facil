@@ -470,23 +470,93 @@ async function findAutoArrowPoint(name,bearing){
  if(!rings.length){const fallback=windDestination(coords,bearing,700);try{cache[name]={point:fallback,time:Date.now()};localStorage.setItem(AUTO_ARROW_CACHE_KEY,JSON.stringify(cache));}catch(e){}return fallback;}
  return null;
 }
+const FETCH_EXPOSURE_CACHE_KEY='supfacil_fetch_exposure_v1';
+const FETCH_EXPOSURE_CACHE_MS=30*86400000;
+const fetchExposurePending={};
+function pointInsideCoastRings(point,rings){
+ const x=point[1],y=point[0];let hit=false;
+ for(const ring of rings){let ringHit=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+   const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
+   if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))ringHit=!ringHit;
+  }
+  if(ringHit)hit=!hit;
+ }
+ return hit;
+}
+async function loadGeographicFetchExposure(name){
+ if(fetchExposurePending[name])return fetchExposurePending[name];
+ fetchExposurePending[name]=(async()=>{
+  const coords=beachCoords[name];if(!coords)return null;
+  let saved={};try{saved=JSON.parse(localStorage.getItem(FETCH_EXPOSURE_CACHE_KEY)||'{}');}catch(e){}
+  if(saved[name]&&Array.isArray(saved[name].fetch)&&Date.now()-saved[name].time<FETCH_EXPOSURE_CACHE_MS)return saved[name];
+  let facing=getBeachSeaBearing(name);
+  if(!Number.isFinite(facing))facing=await loadExternalCoastOrientation(name);
+  if(!Number.isFinite(facing))return null;
+  let rings=[];
+  try{
+   const delta=.58,geometry=encodeURIComponent(JSON.stringify({xmin:coords[1]-delta,ymin:coords[0]-delta,xmax:coords[1]+delta,ymax:coords[0]+delta,spatialReference:{wkid:4326}}));
+   const url='https://services7.arcgis.com/WSiUmUhlFx4CtMBB/arcgis/rest/services/GSHHS_GlobalCoastlines_HighResolution/FeatureServer/0/query?where=1%3D1&geometry='+geometry+'&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=true&outSR=4326&f=json';
+   const response=await fetch(url,{headers:{'Accept':'application/json'}});
+   if(!response.ok)return null;
+   const data=await response.json();rings=(data.features||[]).flatMap(f=>f.geometry?.rings||[]);
+  }catch(e){return null;}
+  if(!rings.length)return null;
+  let seed=null;
+  for(const bearing of [facing,(facing+180)%360]){
+   for(const distance of [150,300,500,800,1200,1800]){
+    const p=windDestination(coords,bearing,distance);
+    if(!pointInsideCoastRings(p,rings)){seed=p;break;}
+   }
+   if(seed)break;
+  }
+  if(!seed)return null;
+  const fetch=[];
+  for(let sector=0;sector<16;sector++){
+   const bearing=sector*22.5;let length=60000;
+   for(let distance=500;distance<=60000;distance+=500){
+    const p=windDestination(seed,bearing,distance);
+    if(pointInsideCoastRings(p,rings)){length=distance-500;break;}
+   }
+   fetch.push(Math.max(0,length));
+  }
+  const result={fetch,seed,time:Date.now(),method:'shoreline-fetch-16-directions'};
+  saved[name]=result;
+  try{localStorage.setItem(FETCH_EXPOSURE_CACHE_KEY,JSON.stringify(saved));}catch(e){}
+  return result;
+ })().finally(()=>{delete fetchExposurePending[name];});
+ return fetchExposurePending[name];
+}
 function assessWaveExposure(name,waveDir){
- // La Herradura es una ensenada amplia: su protección geográfica no se debe
- // deducir de un único rumbo de playa ni confundir con el oleaje del día.
- // La altura, periodo y energía reales siguen penalizando la valoración.
+ // La Herradura: ensenada amplia cuya protección geográfica está validada.
  if(/la herradura/i.test(name))return {category:'sheltered',penalty:0,label:'bahía resguardada por su configuración geográfica',certainty:'protección geográfica conocida'};
- const facing=getBeachSeaBearing(name);
- if(!Number.isFinite(waveDir)||!Number.isFinite(facing))return {category:null,penalty:0,label:'protección no determinada',certainty:'unknown'};
- const diff=angleDiff(waveDir,facing),certainty=Number.isFinite(externalCoastBearing[name])?'geometría costera externa':'orientación aproximada';
- if(diff<=45)return {category:'exposed',penalty:8,label:'oleaje de cara a la costa',certainty,diff,facing};
- if(diff<=90)return {category:'some',penalty:4,label:'oleaje oblicuo respecto a la costa',certainty,diff,facing};
- return {category:'sheltered',penalty:0,label:'oleaje no directamente enfrentado a la costa',certainty,diff,facing};
+ if(!Number.isFinite(waveDir))return {category:null,penalty:0,label:'protección no determinada',certainty:'unknown'};
+ let saved={};try{saved=JSON.parse(localStorage.getItem(FETCH_EXPOSURE_CACHE_KEY)||'{}');}catch(e){}
+ const data=saved[name];
+ if(!data||!Array.isArray(data.fetch)||data.fetch.length!==16)return {category:null,penalty:0,label:'calculando protección geográfica de la costa',certainty:'pending'};
+ const sector=Math.round((((waveDir%360)+360)%360)/22.5)%16;
+ const fetchKm=data.fetch[sector]/1000;
+ if(fetchKm<10)return {category:'sheltered',penalty:0,label:'bahía o costa protegida: alcance de mar abierto inferior a 10 km',certainty:'análisis geográfico de 16 direcciones',fetchKm};
+ if(fetchKm<50)return {category:'some',penalty:4,label:'exposición parcial: mar abierto entre 10 y 50 km',certainty:'análisis geográfico de 16 direcciones',fetchKm};
+ return {category:'exposed',penalty:8,label:'costa abierta: mar abierto a 50 km o más',certainty:'análisis geográfico de 16 direcciones',fetchKm};
 }
 let manualExposureOverride=false;
 function updateAutomaticExposure(name,waveDir){
  if(manualExposureOverride)return;
  const radios=[...document.querySelectorAll('input[name="exposure"]')];
  const result=assessWaveExposure(name,waveDir);
+ if(result.certainty==='pending'){
+  const note=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
+  if(note)note.textContent='Analizando la forma de la costa y el abrigo en 16 direcciones…';
+  loadGeographicFetchExposure(name).then(data=>{
+   if(!data||sel.value!==name)return;
+   const hourIndex=Number($('forecastHour')?.value);
+   if(Number.isInteger(hourIndex)&&activeForecastData)applyForecastHour(hourIndex);
+   else updateAutomaticExposure(name,waveDir);
+  });
+  radios.forEach(r=>r.checked=false);
+  return;
+ }
  radios.forEach(r=>r.checked=!!result.category&&r.value===result.category);
  const note=document.querySelector('input[name="exposure"]')?.closest('.field')?.querySelector('.profile');
  if(!note)return;
