@@ -810,7 +810,7 @@ function applyForecastHour(index){
  }
  if(valid(wave)){$('wave').value=Math.max(0,Math.min(1.5,Math.round(wave*10)/10));$('wavev').textContent=fmt($('wave').value,1)+' m';}
  if(valid(period)){$('period').value=Math.max(2,Math.min(12,Math.round(period)));$('periodv').textContent=$('period').value+' s';}
- const estimatedEnergy=estimateMarineEnergyKj(marine,mi);activeForecastEnergyKj=estimatedEnergy;setEstimatedEnergy(wave,period,estimatedEnergy);
+ const estimatedEnergy=estimateMarineEnergyKj(marine,mi,getBeachSeaBearing(sel.value));activeForecastEnergyKj=estimatedEnergy;setEstimatedEnergy(wave,period,estimatedEnergy);
  updateWindRelation(windDir);
  updateAutomaticExposure(sel.value);
  updateWindMap(sel.value,wind,windDir,gust,stamp);
@@ -879,7 +879,7 @@ async function loadForecastForSelectedBeach(){
     const facing=getBeachSeaBearing(sel.value);
     if(valid(wd)&&valid(facing)){const d=angleDiff(wd,facing);navScore-=d>=135?12:d>45?6:0;}
     navScore=Math.max(0,Math.round(navScore));
-    const energyKj=estimateMarineEnergyKj(marine,mi), energyPenalty=energyKj===null?0:energyKj>=60?30:energyKj>=40?15:energyKj>20?5:0;
+    const energyKj=estimateMarineEnergyKj(marine,mi,getBeachSeaBearing(sel.value)), energyPenalty=energyKj===null?0:energyKj>=60?30:energyKj>=40?15:energyKj>20?5:0;
     const waveExposure=assessGeographicProtection(sel.value);
     const entryScore=Math.max(0,100-(hh>.8?35:hh>.5?22:hh>.3?10:0)-(ww>7?15:ww>5?8:0)-(beaches[sel.value]?.risk?20:0)-waveExposure.penalty-energyPenalty);
     const hard=ww>10||hh>1.3;
