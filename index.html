@@ -685,7 +685,7 @@ function estimateComponentIndex(components,usePeakPeriods=false){
  for(const c of components){
   if(!Number.isFinite(c.height)||c.height<=0)continue;
   const period=usePeakPeriods&&Number.isFinite(c.peakPeriod)&&c.peakPeriod>0?c.peakPeriod:c.period;
-  if(!Number.isFinite(period)||period<=0)continue;
+  if(!Number.isFinite(period)||period<=0)return null;
   total+=0.981*c.height*c.height*period*period;
   count++;
  }
@@ -699,7 +699,8 @@ function estimateMarineEnergyKj(marine,index){
   {height:h.secondary_swell_wave_height?.[index],period:h.secondary_swell_wave_period?.[index]},
   {height:h.tertiary_swell_wave_height?.[index],period:h.tertiary_swell_wave_period?.[index]}
  ];
- const componentEnergy=estimateComponentIndex(components,true);
+ const primaryComponentsAvailable=Number.isFinite(h.wind_wave_height?.[index])&&Number.isFinite(h.swell_wave_height?.[index]);
+ const componentEnergy=primaryComponentsAvailable?estimateComponentIndex(components,true):null;
  if(componentEnergy!==null)return componentEnergy;
  const peak=h.wave_peak_period?.[index],period=Number.isFinite(peak)&&peak>0?peak:h.wave_period?.[index];
  return estimateWaveEnergyKj(h.wave_height?.[index],period);
