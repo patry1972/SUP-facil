@@ -354,7 +354,7 @@ const beachSeaBearing={
 };
 
 function angleDiff(a,b){return Math.abs(((a-b+540)%360)-180);}
-const COAST_CACHE_KEY='supfacil_coast_orientation_v2';
+const COAST_CACHE_KEY='supfacil_coast_orientation_v3';
 let externalCoastBearing={};
 function getBeachSeaBearing(name){const fixed=['Cala San Vicent','Cala Domingos','Cala Serena','Cala Torta','Cala Mitjana','Portocolom','Los Boliches (Fuengirola)','Playa del Castillo (Fuengirola)'];if(fixed.includes(name)&&Number.isFinite(beachSeaBearing[name]))return beachSeaBearing[name];const coords=beachCoords[name];if(/genoveses/i.test(name))return 110;if(coords&&Math.abs(coords[0]-36.7307652)<0.012&&Math.abs(coords[1]+2.1455119)<0.012)return 166;return Number.isFinite(externalCoastBearing[name])?externalCoastBearing[name]:beachSeaBearing[name];}
 async function loadExternalCoastOrientation(name){
@@ -369,7 +369,7 @@ async function loadExternalCoastOrientation(name){
  const px=lon*lonScale,py=lat*latScale;
  const bearingOf=(east,north)=>(Math.atan2(east,north)*180/Math.PI+360)%360;
  const nearestSegments=(lines)=>{
-  let best=null;
+  const candidates=[];
   for(const points of lines||[]){
    for(let i=1;i<points.length;i++){
     const a=points[i-1],b=points[i];
@@ -377,10 +377,22 @@ async function loadExternalCoastOrientation(name){
     const blat=Array.isArray(b)?b[1]:b.lat,blon=Array.isArray(b)?b[0]:b.lon;
     if(!Number.isFinite(alat)||!Number.isFinite(alon)||!Number.isFinite(blat)||!Number.isFinite(blon))continue;
     const ax=alon*lonScale,ay=alat*latScale,bx=blon*lonScale,by=blat*latScale,dx=bx-ax,dy=by-ay;
-    const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(dx*dx+dy*dy||1)));
+    const length=Math.hypot(dx,dy);if(length<1)continue;
+    const t=Math.max(0,Math.min(1,((px-ax)*dx+(py-ay)*dy)/(length*length)));
     const qx=ax+t*dx,qy=ay+t*dy,distance=Math.hypot(px-qx,py-qy);
-    if(!best||distance<best.distance)best={distance,qx,qy,dx,dy,points};
+    candidates.push({distance,qx,qy,dx,dy,points,osmBearing:bearingOf(dy,-dx)});
    }
+  }
+  candidates.sort((a,b)=>a.distance-b.distance);
+  const best=candidates[0];if(!best)return null;
+  // No dependemos de un único tramo: combinamos varios segmentos próximos
+  // de la misma zona y rechazamos orientaciones locales contradictorias.
+  const nearby=candidates.filter(c=>c.distance<=best.distance+180&&angleDiff(c.osmBearing,best.osmBearing)<=55).slice(0,12);
+  if(nearby.length){
+   let east=0,north=0;
+   nearby.forEach(c=>{const rad=c.osmBearing*Math.PI/180,weight=1/Math.max(30,c.distance+30);east+=Math.sin(rad)*weight;north+=Math.cos(rad)*weight;});
+   const mean=(Math.atan2(east,north)*180/Math.PI+360)%360;
+   if(nearby.length===1||nearby.every(c=>angleDiff(c.osmBearing,mean)<=55))best.osmBearing=mean;
   }
   return best;
  };
@@ -399,7 +411,7 @@ async function loadExternalCoastOrientation(name){
    const data=await response.json(),best=nearestSegments((data.elements||[]).map(w=>w.geometry||[]));
    if(best&&best.distance<=4500&&best.distance>=5){
     // La derecha de una línea de costa OSM apunta hacia el mar.
-    return save(bearingOf(best.dy,-best.dx));
+    return save(Number.isFinite(best.osmBearing)?best.osmBearing:bearingOf(best.dy,-best.dx));
    }
   }catch(e){}
  }
@@ -441,7 +453,7 @@ async function loadExternalCoastOrientation(name){
 }
 // Posición automática de flechas SOLO para playas añadidas/guardadas por usuarios.
 // Las playas del catálogo conservan sus ajustes manuales actuales.
-const AUTO_ARROW_CACHE_KEY='supfacil_auto_arrow_water_point_v1';
+const AUTO_ARROW_CACHE_KEY='supfacil_auto_arrow_water_point_v2';
 let autoArrowBeachNames=new Set();
 function loadAutoArrowBeachNames(){try{const saved=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.keys(saved||{}).forEach(n=>{if(!BUILT_IN_BEACH_NAMES.has(n))autoArrowBeachNames.add(n);});}catch(e){}}
 loadAutoArrowBeachNames();
