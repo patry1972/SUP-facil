@@ -162,16 +162,8 @@ function updateWindMap(name,wind,dir,gust,stamp){
  // Las posiciones parten del punto seguro sobre el agua.
  const addWindArrowSet=(startPoint,bearing)=>{
   if(!arrowIcon||!startPoint||activeWindMapData?.name!==name||!beachMap)return;
-  const arrowPositions=[
-   {forward:220,side:-130},
-   {forward:680,side:110},
-   {forward:440,side:-90}
-  ];
-  arrowPositions.forEach(({forward,side})=>{
-   const forwardPoint=windDestination(startPoint,bearing,forward);
-   const arrowPoint=windDestination(forwardPoint,(bearing+90+(side<0?180:0))%360,Math.abs(side));
-   windMapArrow.push(L.marker(arrowPoint,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
-  });
+  // Una sola flecha en el punto seguro sobre el agua.
+  windMapArrow.push(L.marker(startPoint,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
  };
  // Las flechas solo se colocan cuando conocemos el lado del mar.
  // Nunca se sitúan sobre el marcador como posición provisional.
