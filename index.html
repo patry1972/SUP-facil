@@ -849,7 +849,12 @@ function applyForecastHour(index){
    ['Fondo secundario',mh.secondary_swell_wave_height?.[mi],mh.secondary_swell_wave_period?.[mi]],
    ['Fondo terciario',mh.tertiary_swell_wave_height?.[mi],mh.tertiary_swell_wave_period?.[mi]]
   ];
-  breakdown.innerHTML='<strong>Desglose del oleaje</strong>'+components.map(([label,height,per])=>'<div><span>'+label+'</span><span>'+(valid(height)?fmt(height,2)+' m':'sin dato')+' · '+(valid(per)?fmt(per,1)+' s':'periodo sin dato')+'</span></div>').join('');
+  const hasAnyComponent=components.some(([,height])=>valid(height)&&height>0);
+  if(!hasAnyComponent&&valid(wave)&&wave>0){
+   breakdown.innerHTML='<strong>Desglose del oleaje</strong><p>El modelo no facilita el reparto entre mar de viento y mar de fondo para esta hora. Oleaje total: '+fmt(wave,2)+' m. La energía se calcula con el dato total disponible.</p>';
+  }else{
+   breakdown.innerHTML='<strong>Desglose del oleaje</strong>'+components.map(([label,height,per])=>'<div><span>'+label+'</span><span>'+(valid(height)?fmt(height,2)+' m':'sin dato')+' · '+(valid(per)?fmt(per,1)+' s':'periodo sin dato')+'</span></div>').join('');
+  }
  }
  const box=$('forecastStatus');
  const wdText=valid(windDir)?compassLabel(windDir)+' ('+Math.round(windDir)+'°)':'sin dato';
@@ -877,7 +882,7 @@ async function loadForecastForSelectedBeach(){
    return data;
   };
   const weatherUrl='https://api.open-meteo.com/v1/forecast?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&daily=sunrise,sunset&wind_speed_unit=kn&timezone=Europe%2FMadrid&forecast_days=3';
-  const marineUrl='https://marine-api.open-meteo.com/v1/marine?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wave_height,wave_direction,wave_period,wave_peak_period,wind_wave_height,wind_wave_direction,wind_wave_period,wind_wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,swell_wave_peak_period,secondary_swell_wave_height,secondary_swell_wave_direction,secondary_swell_wave_period,tertiary_swell_wave_height,tertiary_swell_wave_direction,tertiary_swell_wave_period&length_unit=metric&models=ncep_gfswave025&timezone=Europe%2FMadrid&forecast_days=3';
+  const marineUrl='https://marine-api.open-meteo.com/v1/marine?latitude='+coords[0]+'&longitude='+coords[1]+'&hourly=wave_height,wave_direction,wave_period,wave_peak_period,wind_wave_height,wind_wave_direction,wind_wave_period,wind_wave_peak_period,swell_wave_height,swell_wave_direction,swell_wave_period,swell_wave_peak_period,secondary_swell_wave_height,secondary_swell_wave_direction,secondary_swell_wave_period,tertiary_swell_wave_height,tertiary_swell_wave_direction,tertiary_swell_wave_period&length_unit=metric&models=best_match&timezone=Europe%2FMadrid&forecast_days=3';
   const [weather,marine]=await Promise.all([
    fetchForecastJson('la previsión de viento',weatherUrl),
    fetchForecastJson('la previsión del oleaje',marineUrl)
