@@ -478,14 +478,15 @@ async function loadExternalCoastOrientation(name){
 }
 // Posición automática de flechas SOLO para playas añadidas/guardadas por usuarios.
 // Las playas del catálogo conservan sus ajustes manuales actuales.
-const AUTO_ARROW_CACHE_KEY='supfacil_auto_arrow_water_point_v2';
+const AUTO_ARROW_CACHE_KEY='supfacil_auto_arrow_water_point_v3';
 let autoArrowBeachNames=new Set();
 function loadAutoArrowBeachNames(){try{const saved=JSON.parse(localStorage.getItem(ADDED_BEACHES_KEY)||'{}');Object.keys(saved||{}).forEach(n=>{if(!BUILT_IN_BEACH_NAMES.has(n))autoArrowBeachNames.add(n);});}catch(e){}}
 loadAutoArrowBeachNames();
 async function findAutoArrowPoint(name,bearing){
  const coords=beachCoords[name];if(!coords||!Number.isFinite(bearing))return null;
  let cache={};try{cache=JSON.parse(localStorage.getItem(AUTO_ARROW_CACHE_KEY)||'{}');const hit=cache[name];if(hit&&Array.isArray(hit.point)&&hit.point.length===2&&Array.isArray(hit.coords)&&hit.coords[0]===coords[0]&&hit.coords[1]===coords[1]&&Date.now()-hit.time<30*86400000)return hit.point;}catch(e){}
- const lat=coords[0],lon=coords[1],distances=[250,400,550,700,900,1150,1450,1800,2300,3000,4000,5000];
+ // Evita que la flecha quede pegada a la orilla o se solape con el icono de ubicación.
+ const lat=coords[0],lon=coords[1],distances=[700,900,1150,1450,1800,2300,3000,4000,5000];
  let rings=[];
  try{
   const delta=.035,geometry=encodeURIComponent(JSON.stringify({xmin:lon-delta,ymin:lat-delta,xmax:lon+delta,ymax:lat+delta,spatialReference:{wkid:4326}}));
