@@ -157,19 +157,26 @@ function updateWindMap(name,wind,dir,gust,stamp){
  if(!beachMap.getPane(pane)){beachMap.createPane(pane);beachMap.getPane(pane).style.zIndex=650;beachMap.getPane(pane).style.pointerEvents='auto';}
  const seaBearing=getBeachSeaBearing(name);
  const arrowIcon=dir===null?null:L.divIcon({className:'wind-map-div-icon',html:'<div class="wind-map-arrow-rot" style="transform:rotate('+angle+'deg)"><div class="wind-map-arrow">➝</div></div>',iconSize:[30,30],iconAnchor:[15,15]});
- // La flecha solo se coloca cuando conocemos el lado del mar.
- // Nunca la situamos sobre el marcador como posición provisional.
+ // Tres flechas idénticas, alineadas hacia el mar y separadas 350 m.
+ // Se reutiliza el punto seguro sobre el agua que ya calculaba el mapa.
+ const addWindArrowSet=(startPoint,bearing)=>{
+  if(!arrowIcon||!startPoint||activeWindMapData?.name!==name||!beachMap)return;
+  [0,350,700].forEach(distance=>{
+   const arrowPoint=distance===0?startPoint:windDestination(startPoint,bearing,distance);
+   windMapArrow.push(L.marker(arrowPoint,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
+  });
+ };
+ // Las flechas solo se colocan cuando conocemos el lado del mar.
+ // Nunca se sitúan sobre el marcador como posición provisional.
  let point=coords;
  if(Number.isFinite(seaBearing)){
   if(autoArrowBeachNames.has(name)){
    findAutoArrowPoint(name,seaBearing).then(autoPoint=>{
-    if(autoPoint&&arrowIcon&&activeWindMapData?.name===name&&beachMap){
-     windMapArrow.push(L.marker(autoPoint,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
-    }
+    if(autoPoint&&activeWindMapData?.name===name&&beachMap)addWindArrowSet(autoPoint,seaBearing);
    });
   }else{
    point=windDestination(coords,seaBearing,(windArrowDistance[name]||500));
-   if(arrowIcon)windMapArrow.push(L.marker(point,{icon:arrowIcon,interactive:false,zIndexOffset:2000,pane}).addTo(beachMap));
+   addWindArrowSet(point,seaBearing);
   }
  }else{
   loadExternalCoastOrientation(name).then(bearing=>{
