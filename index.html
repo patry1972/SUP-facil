@@ -703,6 +703,21 @@ function estimateMarineEnergyKj(marine,index){
  if(componentEnergy!==null)return componentEnergy;
  return estimateWaveEnergyKj(h.wave_height?.[index],h.wave_period?.[index]);
 }
+function describeMarineEnergyComponents(marine,index){
+ const h=marine?.hourly||{};
+ const parts=[
+  ['Viento',h.wind_wave_height?.[index],h.wind_wave_period?.[index]],
+  ['Mar de fondo',h.swell_wave_height?.[index],h.swell_wave_period?.[index]],
+  ['Mar secundario 1',h.secondary_swell_wave_height?.[index],h.secondary_swell_wave_period?.[index]],
+  ['Mar secundario 2',h.tertiary_swell_wave_height?.[index],h.tertiary_swell_wave_period?.[index]]
+ ];
+ return parts.map(([name,height,period])=>{
+  if(!Number.isFinite(height)||height<=0)return name+': 0';
+  if(!Number.isFinite(period)||period<=0)return name+': '+height.toFixed(2)+' m · periodo sin dato';
+  const energy=0.981*height*height*period*period;
+  return name+': '+height.toFixed(2)+' m × '+period.toFixed(1)+' s = '+energy.toFixed(1)+' kJ/m';
+ }).join(' · ');
+}
 let forecastRequestId=0, activeForecastData=null, activeWaveDirection=null, activeForecastEnergyKj=null;
 function summarizeBestHours(){
  const box=$('bestHours'); if(!box||!activeForecastData)return;
@@ -809,7 +824,7 @@ function applyForecastHour(index){
  const box=$('forecastStatus');
  const wdText=valid(windDir)?compassLabel(windDir)+' ('+Math.round(windDir)+'°)':'sin dato';
  const waveDirText=valid(waveDir)?compassLabel(waveDir)+' ('+Math.round(waveDir)+'°)':'sin dato';
- box.innerHTML='<strong>Previsión automática · '+sel.value+'</strong><br>Hora consultada: '+stamp.replace('T',' ')+'<br>Viento: '+(valid(wind)?fmt(wind,1)+' kn':'sin dato')+' · rachas: '+(valid(gust)?fmt(gust,1)+' kn':'sin dato')+' · dirección: '+wdText+'<br>Olas: '+(valid(wave)?fmt(wave,2)+' m':'sin dato')+' · periodo: '+(valid(period)?fmt(period,0)+' s':'sin dato')+' · dirección: '+waveDirText+'<br><small>Fuente: Open-Meteo Marine. Energía estimada con el cálculo único de SUP Fácil. Comprueba siempre la rompiente y las condiciones reales.</small>';
+ box.innerHTML='<strong>Previsión automática · '+sel.value+'</strong><br>Hora consultada: '+stamp.replace('T',' ')+'<br>Viento: '+(valid(wind)?fmt(wind,1)+' kn':'sin dato')+' · rachas: '+(valid(gust)?fmt(gust,1)+' kn':'sin dato')+' · dirección: '+wdText+'<br>Olas: '+(valid(wave)?fmt(wave,2)+' m':'sin dato')+' · periodo: '+(valid(period)?fmt(period,0)+' s':'sin dato')+' · dirección: '+waveDirText+'<br><small>Desglose experimental: '+describeMarineEnergyComponents(marine,mi)+'.</small><br><small>Fuente: Open-Meteo Marine. Energía estimada con el cálculo único de SUP Fácil. Comprueba siempre la rompiente y las condiciones reales.</small>';
  $('hourlyNote').textContent='Datos actualizados para '+stamp.replace('T',' ')+'. Elige otra hora para comparar cómo cambia la previsión. La recomendación seguirá siendo orientativa.';
  calculateSemaforo();
 }
