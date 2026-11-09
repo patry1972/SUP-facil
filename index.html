@@ -755,7 +755,8 @@ function calculateConditionScores({wind,gust,wave,period,windRelation='unknown',
  const hp=h<=.2?0:h<=.3?2:h<=.4?5:h<=.5?8:h<=.7?13:h<=.9?20:h<=1.1?27:30;
  const directionPenalty=windRelation==='offshore'?12:windRelation==='cross'?6:0;
  const exposurePenalty=exposure==='exposed'?10:exposure==='some'?4:0;
- const navigationScore=Math.max(0,Math.round(100-wp-gp-hp-directionPenalty-exposurePenalty-(p>=7&&h>=.5?4:0)));
+ const navigationEnergyPenalty=Number.isFinite(energyKj)?(energyKj>=60?12:energyKj>=40?6:energyKj>20?2:0):0;
+ const navigationScore=Math.max(0,Math.round(100-wp-gp-hp-directionPenalty-exposurePenalty-(p>=7&&h>=.5?4:0)-navigationEnergyPenalty));
  const energyPenalty=Number.isFinite(energyKj)?(energyKj>=60?30:energyKj>=40?15:energyKj>20?5:0):0;
  const entryScore=Math.max(0,Math.round(100-(h>.8?35:h>.5?22:h>.3?10:0)-(w>7?15:w>5?8:0)-(beachRisk?20:0)-energyPenalty-protectionPenalty));
  const hard=w>10||h>1.3,entryHard=hard||(Number.isFinite(energyKj)&&energyKj>=60);
