@@ -909,7 +909,7 @@ function refreshForecastHourIndicators(){
    const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:!!beaches[sel.value]?.risk,energyKj,protectionPenalty:exposureResult.penalty});
    level=Math.min(scored.navigationLevel,scored.entryLevel);
   }
-  const light=level===null?'⚪':level===3?'🟢':level===2?'🟡':level===1?'🔸':'🔴';
+  const light=level===null?'⚪':level===3?'🟢':level===2?'🟡':level===1?'🟠':'🔴';
   opt.textContent=light+' '+stamp.slice(11,16);
   opt.title=level===null?'Sin datos suficientes para valorar esta hora':(level===3?'Favorable':level===2?'Precaución':level===1?'Difícil':'No recomendada')+' · nivel más prudente entre navegación y entrada/salida';
  });
@@ -969,7 +969,7 @@ async function loadForecastForSelectedBeach(){
     const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:!!beaches[sel.value]?.risk,energyKj,protectionPenalty:exposureResult.penalty});
     score=scored.overallLevel;
    }
-   const light=score===null?'⚪':score===3?'🟢':score===2?'🟡':score===1?'🔸':'🔴';
+   const light=score===null?'⚪':score===3?'🟢':score===2?'🟡':score===1?'🟠':'🔴';
    opt.textContent=light+' '+t.slice(11,16);
    if(score!==null)opt.title=(score===3?'Favorable':score===2?'Precaución':score===1?'Difícil':'No recomendada')+' · nivel más prudente entre navegación y entrada/salida';
    group.appendChild(opt);
@@ -1003,7 +1003,7 @@ function calculateSemaforo(){
  const selectedHour=$('forecastHour')?.selectedOptions?.[0];
  if(selectedHour){
   const overall=Math.min(scored.navigationLevel,scored.entryLevel);
-  const light=overall===3?'🟢':overall===2?'🟡':overall===1?'🔸':'🔴';
+  const light=overall===3?'🟢':overall===2?'🟡':overall===1?'🟠':'🔴';
   const stamp=activeForecastData?.weather?.hourly?.time?.[Number(selectedHour.value)]||'';
   selectedHour.textContent=light+' '+stamp.slice(11,16);
   selectedHour.title=(overall===3?'Favorable':overall===2?'Precaución':overall===1?'Difícil':'No recomendada')+' · nivel más prudente entre navegación y entrada/salida';
