@@ -1007,6 +1007,12 @@ function calculateSemaforo(){
   const stamp=activeForecastData?.weather?.hourly?.time?.[Number(selectedHour.value)]||'';
   selectedHour.textContent=light+' '+stamp.slice(11,16);
   selectedHour.title=(overall===3?'Favorable':overall===2?'Precaución':overall===1?'Difícil':'No recomendada')+' · nivel más prudente entre navegación y entrada/salida';
+  const preview=$('currentHourPreview');
+  if(preview){
+   const stamp=activeForecastData?.weather?.hourly?.time?.[Number(selectedHour.value)]||'';
+   const indicator=selectedHour.textContent.split(' ')[0];
+   preview.textContent='Ahora · '+stamp.slice(11,16)+(indicator?' · '+indicator:'');
+  }
  }
  const note=wd==='offshore'?' Atención: el viento de tierra puede alejarte de la costa, incluso si cerca de la orilla parece tranquilo. ':'';
  const energyNote=e>=60?' Energía estimada de 60 kJ/m o más: entrada y salida no recomendadas para principiantes en esta prueba. ':e>=40?' Energía estimada elevada (40–59 kJ/m): penalización importante en entrada y salida; comprueba la rompiente real. ':e>20?' Energía estimada (21–39 kJ/m): precaución adicional en entrada y salida. ':'';
