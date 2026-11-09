@@ -909,9 +909,8 @@ function refreshForecastHourIndicators(){
    const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:!!beaches[sel.value]?.risk,energyKj,protectionPenalty:exposureResult.penalty});
    level=Math.min(scored.navigationLevel,scored.entryLevel);
   }
-  const lightColor=level===null?'#9aa5a1':level===3?'var(--green)':level===2?'var(--yellow)':level===1?'var(--orange)':'var(--red)';
-  opt.textContent='● '+stamp.slice(11,16);
-  opt.style.color=lightColor;
+  const light=level===null?'⚪':level===3?'🟢':level===2?'🟡':level===1?'🟠':'🔴';
+  opt.textContent=light+' '+stamp.slice(11,16);
   opt.title=level===null?'Sin datos suficientes para valorar esta hora':(level===3?'Favorable':level===2?'Precaución':level===1?'Difícil':'No recomendada')+' · nivel más prudente entre navegación y entrada/salida';
  });
 }
@@ -1004,10 +1003,9 @@ function calculateSemaforo(){
  const selectedHour=$('forecastHour')?.selectedOptions?.[0];
  if(selectedHour){
   const overall=Math.min(scored.navigationLevel,scored.entryLevel);
-  const lightColor=overall===3?'var(--green)':overall===2?'var(--yellow)':overall===1?'var(--orange)':'var(--red)';
+  const light=overall===3?'🟢':overall===2?'🟡':overall===1?'🟠':'🔴';
   const stamp=activeForecastData?.weather?.hourly?.time?.[Number(selectedHour.value)]||'';
-  selectedHour.textContent='● '+stamp.slice(11,16);
-  selectedHour.style.color=lightColor;
+  selectedHour.textContent=light+' '+stamp.slice(11,16);
   selectedHour.title=(overall===3?'Favorable':overall===2?'Precaución':overall===1?'Difícil':'No recomendada')+' · nivel más prudente entre navegación y entrada/salida';
  }
  const note=wd==='offshore'?' Atención: el viento de tierra puede alejarte de la costa, incluso si cerca de la orilla parece tranquilo. ':'';
