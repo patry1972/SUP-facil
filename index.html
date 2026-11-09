@@ -913,6 +913,14 @@ function refreshForecastHourIndicators(){
   opt.textContent=light+' '+stamp.slice(11,16);
   opt.title=level===null?'Sin datos suficientes para valorar esta hora':(level===3?'Favorable':level===2?'Precaución':level===1?'Difícil':'No recomendada')+' · nivel más prudente entre navegación y entrada/salida';
  });
+ // Sincronizar el resumen «Ahora» con el color definitivo del selector horario.
+ const selectedOption=$('forecastHour').selectedOptions?.[0];
+ const hourPreview=$('currentHourPreview');
+ if(selectedOption&&hourPreview){
+  const stamp=times[Number(selectedOption.value)]||'';
+  const indicator=selectedOption.textContent.split(' ')[0];
+  hourPreview.textContent='Ahora · '+stamp.slice(11,16)+(indicator?' · '+indicator:'');
+ }
 }
 async function loadForecastForSelectedBeach(){
  activeForecastEnergyKj=null;
