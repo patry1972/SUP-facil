@@ -782,7 +782,7 @@ function summarizeBestHours(){
    let relation='unknown';
    if(valid(wd)&&valid(facing)){const d=angleDiff(wd,facing);relation=d>=135?'offshore':d>45?'cross':'onshore';}
    const energyKj=estimateMarineEnergyKj(marine,mi);
-   const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:!!beaches[sel.value]?.risk,energyKj,protectionPenalty:exposureResult.penalty});
+   const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:sel.value==='Playa del Castillo (Fuengirola)',energyKj,protectionPenalty:exposureResult.penalty});
    candidates.push({i,dt,w:scored.wind,g:scored.gust,h:scored.wave,p:scored.period,score:Math.min(scored.navigationScore,scored.entryScore),levelIndex:scored.overallLevel,hard:scored.hard,entryHard:scored.entryHard,relation});
  }
  // Buscar la franja diurna consecutiva más favorable antes de ordenar por puntuación.
@@ -907,7 +907,7 @@ function refreshForecastHourIndicators(){
    let relation='unknown';
    if(valid(wd)&&valid(facing)){const d=angleDiff(wd,facing);relation=d>=135?'offshore':d>45?'cross':'onshore';}
    const energyKj=estimateMarineEnergyKj(marine,mi);
-   const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:!!beaches[sel.value]?.risk,energyKj,protectionPenalty:exposureResult.penalty});
+   const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:sel.value==='Playa del Castillo (Fuengirola)',energyKj,protectionPenalty:exposureResult.penalty});
    level=Math.min(scored.navigationLevel,scored.entryLevel);
   }
   const light=level===null?'⚪':level===3?'🟢':level===2?'🟡':level===1?'🟠':'🔴';
@@ -967,7 +967,7 @@ async function loadForecastForSelectedBeach(){
     let relation='unknown';
     if(valid(wd)&&valid(facing)){const d=angleDiff(wd,facing);relation=d>=135?'offshore':d>45?'cross':'onshore';}
     const energyKj=estimateMarineEnergyKj(marine,mi);
-    const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:!!beaches[sel.value]?.risk,energyKj,protectionPenalty:exposureResult.penalty});
+    const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation:relation,exposure:exposureResult.category,beachRisk:sel.value==='Playa del Castillo (Fuengirola)',energyKj,protectionPenalty:exposureResult.penalty});
     score=scored.overallLevel;
    }
    const light=score===null?'⚪':score===3?'🟢':score===2?'🟡':score===1?'🟠':'🔴';
@@ -997,7 +997,7 @@ function calculateSemaforo(){
  const wd=document.querySelector('input[name=winddir]:checked')?.value||'unknown';
  const windRelation=wd==='offshore'?'offshore':wd==='cross'?'cross':'onshore';
  const exposureResult=protectionForCalculation(sel.value),b=beaches[sel.value];
- const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation,exposure:exposureResult.category,beachRisk:!!b?.risk,energyKj:e,protectionPenalty:exposureResult.penalty});
+ const scored=calculateConditionScores({wind:w,gust:g,wave:h,period:p,windRelation,exposure:exposureResult.category,beachRisk:sel.value==='Playa del Castillo (Fuengirola)',energyKj:e,protectionPenalty:exposureResult.penalty});
  const score=scored.navigationScore,entry=scored.entryScore;
  const nav=band(score,scored.hard),ent=band(entry,scored.entryHard);
  // La hora seleccionada siempre muestra el nivel más restrictivo de los dos semáforos principales.
