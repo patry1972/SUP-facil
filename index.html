@@ -143,7 +143,7 @@ const provinceToCommunity={
 };
 const communityNames=new Set(Object.values(provinceToCommunity).concat(['Andalucía','Aragón','Canarias','Cantabria','Castilla-La Mancha','Castilla y León','Cataluña','Comunidad Valenciana','Extremadura','Galicia','La Rioja','Comunidad de Madrid','Región de Murcia','Navarra','País Vasco','Ceuta','Melilla','Asturias','Illes Balears']));
 function communityForProvince(value){const raw=String(value||'').trim();if(!raw||/^(guardada por ti|otras ubicaciones)$/i.test(raw))return 'Otras ubicaciones';const exact=Object.keys(provinceToCommunity).find(k=>k.toLocaleLowerCase('es')===raw.toLocaleLowerCase('es'));return exact?provinceToCommunity[exact]:(communityNames.has(raw)?raw:'Otras ubicaciones');}
-function provinceLabel(value){const raw=String(value||'').trim();if(!raw||/^(guardada por ti|otras ubicaciones)$/i.test(raw)||communityNames.has(raw))return '';return raw;}
+function provinceLabel(value){const raw=String(value||'').trim();if(!raw||/^(guardada por ti|otras ubicaciones)$/i.test(raw)||[...communityNames].some(name=>name.localeCompare(raw,'es',{sensitivity:'base'})===0))return '';return raw;}
 function rebuildBeachSelect(preferred){
  sel.innerHTML='';
  const entries=Object.keys(beaches).map(name=>({name,province:beachProvince[name]||'Málaga',community:communityForProvince(beachProvince[name]||'Málaga')}))
