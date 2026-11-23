@@ -143,13 +143,13 @@ const provinceToCommunity={
 };
 const communityNames=new Set(Object.values(provinceToCommunity).concat(['Andalucía','Aragón','Canarias','Cantabria','Castilla-La Mancha','Castilla y León','Cataluña','Comunidad Valenciana','Extremadura','Galicia','La Rioja','Comunidad de Madrid','Región de Murcia','Navarra','País Vasco','Ceuta','Melilla','Asturias','Illes Balears']));
 const beachProvinceOverrides={
-'Bolonia':'Cádiz','Playa de los Genoveses':'Almería','Playa de Torreblanca':'Málaga','benalmadena':'Málaga','Benalmádena':'Málaga','nerja':'Málaga','Nerja':'Málaga','Playa de la Polea':'Asturias','Playa de la Cruz':'Alicante','Playa de La Mata':'Alicante',
+'Bolonia':'Cádiz','Playa de los Genoveses':'Almería','Playa de Torreblanca':'Málaga','benalmadena':'Málaga','Benalmádena':'Málaga','nerja':'Málaga','Nerja':'Málaga','Playa de la Polea':'Asturias','Playa de la Cruz':'Alicante','Playa de La Mata':'Alicante','Cala Domingos':'Illes Balears','Cala Murada (Mallorca)':'Illes Balears','Cala San Vicent':'Illes Balears','Cala Serena':'Illes Balears','Caló des Borgit':'Illes Balears','Cala Torta':'Illes Balears','Cala Bota':'Illes Balears','Cala Mitjana':'Illes Balears','Portocolom':'Illes Balears',
 'Playa de Calabajío (Almuñécar)':'Granada','Playa Cabria':'Granada','La Herradura / Cotobro':'Granada','Marina del Este':'Granada','Punta de la Mona':'Granada','Las Alberquillas (Maro)':'Málaga','Maro (Málaga)':'Málaga'
 };
 function normalizedProvince(value){const raw=String(value||'').trim();if(!raw)return '';const aliases={'Islas Baleares':'Illes Balears','Baleares':'Illes Balears','València':'Valencia','Castelló':'Castellón','Araba':'Álava','Bizkaia':'Vizcaya','Gipuzkoa':'Guipúzcoa','La Coruña':'A Coruña','Orense':'Ourense'};return aliases[raw]||raw;}
 function provinceForBeach(name,value){const clean=cleanLegacyBeachName(name);if(beachProvinceOverrides[clean])return beachProvinceOverrides[clean];const raw=normalizedProvince(value);if(raw&&!communityNames.has(raw)&&!/^guardada por ti$/i.test(raw))return raw;return 'Provincia por confirmar';}
 function communityForBeach(name,value){const raw=normalizedProvince(value);if(raw&&communityNames.has(raw))return raw;const province=provinceForBeach(name,value);return provinceToCommunity[province]||'Otras ubicaciones';}
-function displayBeachName(name){return cleanLegacyBeachName(name).replace(/\\s*\\((?:Málaga|Granada|Mallorca|Fuengirola|Mijas|Almuñécar)\\)\\s*/ig,'').trim();}
+function displayBeachName(name){return cleanLegacyBeachName(name).replace(/\s*\((?:Málaga|Granada|Mallorca|Fuengirola|Mijas|Almuñécar)\)\s*/ig,'').trim();}
 function rebuildBeachSelect(preferred){
  sel.innerHTML='';
  const entries=Object.keys(beaches).map(name=>({name,province:provinceForBeach(name,beachProvince[name]),community:communityForBeach(name,beachProvince[name])}))
