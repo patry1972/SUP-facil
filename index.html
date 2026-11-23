@@ -155,8 +155,8 @@ const beachProvinceOverrides={
 'Playa de Calabajío (Almuñécar)':'Granada','Playa Cabria':'Granada','La Herradura / Cotobro':'Granada','Marina del Este':'Granada','Punta de la Mona':'Granada','Las Alberquillas (Maro)':'Málaga','Maro (Málaga)':'Málaga'
 };
 function normalizedProvince(value){const raw=String(value||'').trim();if(!raw)return '';const aliases={'Islas Baleares':'Illes Balears','Baleares':'Illes Balears','València':'Valencia','Castelló':'Castellón','Araba':'Álava','Bizkaia':'Vizcaya','Gipuzkoa':'Guipúzcoa','La Coruña':'A Coruña','Orense':'Ourense'};return aliases[raw]||raw;}
-function provinceForBeach(name,value){const clean=cleanLegacyBeachName(name);if(beachProvinceOverrides[clean])return beachProvinceOverrides[clean];const raw=normalizedProvince(value);if(raw&&!communityNames.has(raw)&&!/^guardada por ti$/i.test(raw))return raw;return 'Provincia sin indicar';}
-function communityForBeach(name,value){const raw=normalizedProvince(value);if(raw&&communityNames.has(raw))return raw;const province=provinceForBeach(name,value);return provinceToCommunity[province]||'Otras ubicaciones';}
+function provinceForBeach(name,value){const clean=cleanLegacyBeachName(name);if(beachProvinceOverrides[clean])return beachProvinceOverrides[clean];const raw=normalizedProvince(value);if(raw&&!communityNames.has(raw)&&!/^guardada por ti$/i.test(raw))return raw;return '';}
+function communityForBeach(name,value){const raw=normalizedProvince(value);if(raw&&communityNames.has(raw))return raw;const province=provinceForBeach(name,value);return (province&&provinceToCommunity[province])||'Otras ubicaciones';}
 function displayBeachName(name){return cleanLegacyBeachName(name).replace(/\s*\((?:Málaga|Granada|Mallorca|Fuengirola|Mijas|Almuñécar)\)\s*/ig,'').trim();}
 function rebuildBeachSelect(preferred){
  sel.innerHTML='';
@@ -167,7 +167,7 @@ function rebuildBeachSelect(preferred){
   const group=document.createElement('optgroup');group.label=community;
   const provinces=[...new Set(entries.filter(item=>item.community===community).map(item=>item.province))].sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
   provinces.forEach(province=>{
-   const heading=document.createElement('option');heading.disabled=true;heading.className='province-heading';heading.textContent='— '+province+' —';group.appendChild(heading);
+   if(province){const heading=document.createElement('option');heading.disabled=true;heading.className='province-heading';heading.textContent=province;group.appendChild(heading);}
    entries.filter(item=>item.community===community&&item.province===province).sort((a,b)=>displayBeachName(a.name).localeCompare(displayBeachName(b.name),'es',{sensitivity:'base'})).forEach(item=>{
     const o=document.createElement('option');o.value=cleanLegacyBeachName(item.name);o.textContent='　'+displayBeachName(item.name);group.appendChild(o);
    });
@@ -193,11 +193,9 @@ function renderBeachPicker(){
  const communities=[...sel.querySelectorAll('optgroup')];
  communities.forEach(group=>{
   const community=document.createElement('div');community.className='beach-community';community.textContent=group.label;panel.appendChild(community);
-  let lastProvince='';
   [...group.querySelectorAll('option')].forEach(option=>{
    if(option.disabled){
-    lastProvince=option.textContent.replace(/^—\s*|\s*—$/g,'').trim();
-    const province=document.createElement('div');province.className='beach-province';province.textContent=lastProvince;panel.appendChild(province);
+    const province=document.createElement('div');province.className='beach-province';province.textContent=option.textContent;panel.appendChild(province);
    }else{
     const item=document.createElement('button');item.type='button';item.className='beach-option';item.textContent=displayBeachName(option.value);
     item.addEventListener('click',()=>{sel.value=option.value;sel.dispatchEvent(new Event('change'));toggle.textContent=displayBeachName(option.value)+'　▾';panel.hidden=true;toggle.setAttribute('aria-expanded','false');});
