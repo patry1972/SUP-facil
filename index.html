@@ -207,6 +207,7 @@ function renderBeachPicker(){
  });
  picker.append(toggle,panel);
  toggle.setAttribute('aria-expanded','false');
+ if(!sel.dataset.pickerSync){sel.addEventListener('change',()=>{const current=document.querySelector('#beachPicker .beach-picker-toggle');if(current)current.textContent=(sel.options[sel.selectedIndex]?.textContent||'Selecciona una playa')+'　▾';});sel.dataset.pickerSync='1';}
 }
 rebuildBeachSelect('Torre del Pino');
 // Coordenadas aproximadas para situar las playas; se pueden afinar con futuras visitas.
