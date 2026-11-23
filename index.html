@@ -134,13 +134,13 @@ const beaches={
 const $=id=>document.getElementById(id);const sel=$('beach');
 const beachProvince={
 'Las Doradas':'Málaga','Torre del Pino':'Málaga','La Herradura / Cotobro':'Granada','Marina del Este':'Granada','Punta de la Mona':'Granada','Playa de Calabajío (Almuñécar)':'Granada','Playa Cabria':'Granada','Las Alberquillas (Maro)':'Málaga','Los Boliches (Fuengirola)':'Málaga','El Bombo (Mijas)':'Málaga','Maro (Málaga)':'Málaga','Playa del Castillo (Fuengirola)':'Málaga',
-'Playa del Cañuelo':'Málaga','Playa Cabopino':'Málaga','Cala Domingos':'Illes Balears','Cala Murada (Mallorca)':'Illes Balears','Cala San Vicent':'Illes Balears','Cala Serena':'Illes Balears','Caló des Borgit':'Illes Balears','Cala Torta':'Illes Balears','Cala Bota':'Illes Balears','Cala Mitjana':'Illes Balears','Portocolom':'Illes Balears'};
+'Playa del Cañuelo':'Málaga','Playa Cabopino':'Málaga','Cala Domingos':'Mallorca','Cala Murada (Mallorca)':'Mallorca','Cala San Vicent':'Mallorca','Cala Serena':'Mallorca','Caló des Borgit':'Mallorca','Cala Torta':'Mallorca','Cala Bota':'Mallorca','Cala Mitjana':'Mallorca','Portocolom':'Mallorca'};
 function cleanLegacyBeachName(name){return String(name||'').replace(/^Consulta temporal:\s*/i,'').replace(/\s*(?:[·–-]\s*)?\(?Playa temporal\)?\s*$/i,'').trim();}
 const provinceToCommunity={
 'Almería':'Andalucía','Cádiz':'Andalucía','Córdoba':'Andalucía','Granada':'Andalucía','Huelva':'Andalucía','Jaén':'Andalucía','Málaga':'Andalucía','Sevilla':'Andalucía',
 'Huesca':'Aragón','Teruel':'Aragón','Zaragoza':'Aragón',
 'Asturias':'Asturias',
-'Illes Balears':'Illes Balears','Islas Baleares':'Illes Balears','Baleares':'Illes Balears',
+'Mallorca':'Illes Balears','Illes Balears':'Illes Balears','Islas Baleares':'Illes Balears','Baleares':'Illes Balears',
 'Las Palmas':'Canarias','Santa Cruz de Tenerife':'Canarias',
 'Cantabria':'Cantabria',
 'Albacete':'Castilla-La Mancha','Ciudad Real':'Castilla-La Mancha','Cuenca':'Castilla-La Mancha','Guadalajara':'Castilla-La Mancha','Toledo':'Castilla-La Mancha',
@@ -161,7 +161,7 @@ const beachProvinceOverrides={
 'Bolonia':'Cádiz','Playa de los Genoveses':'Almería','Playa de Torreblanca':'Málaga','benalmadena':'Málaga','Benalmádena':'Málaga','nerja':'Málaga','Nerja':'Málaga','Playa de la Polea':'Asturias','Playa de la Cruz':'Alicante','Playa de La Mata':'Alicante','Cala Domingos':'Illes Balears','Cala Murada (Mallorca)':'Illes Balears','Cala San Vicent':'Illes Balears','Cala Serena':'Illes Balears','Caló des Borgit':'Illes Balears','Cala Torta':'Illes Balears','Cala Bota':'Illes Balears','Cala Mitjana':'Illes Balears','Portocolom':'Illes Balears',
 'Playa de Calabajío (Almuñécar)':'Granada','Playa Cabria':'Granada','La Herradura / Cotobro':'Granada','Marina del Este':'Granada','Punta de la Mona':'Granada','Las Alberquillas (Maro)':'Málaga','Maro (Málaga)':'Málaga'
 };
-function normalizedProvince(value){const raw=String(value||'').trim();if(!raw)return '';const aliases={'Islas Baleares':'Illes Balears','Baleares':'Illes Balears','València':'Valencia','Castelló':'Castellón','Araba':'Álava','Bizkaia':'Vizcaya','Gipuzkoa':'Guipúzcoa','La Coruña':'A Coruña','Orense':'Ourense'};return aliases[raw]||raw;}
+function normalizedProvince(value){const raw=String(value||'').trim();if(!raw)return '';const aliases={'Illes Balears':'Mallorca','Islas Baleares':'Mallorca','Baleares':'Mallorca','València':'Valencia','Castelló':'Castellón','Araba':'Álava','Bizkaia':'Vizcaya','Gipuzkoa':'Guipúzcoa','La Coruña':'A Coruña','Orense':'Ourense'};return aliases[raw]||raw;}
 function provinceForBeach(name,value){const clean=cleanLegacyBeachName(name);if(beachProvinceOverrides[clean])return beachProvinceOverrides[clean];const raw=normalizedProvince(value);if(raw&&!communityNames.has(raw)&&!/^guardada por ti$/i.test(raw))return raw;return '';}
 function communityForBeach(name,value){const raw=normalizedProvince(value);if(raw&&communityNames.has(raw))return raw;const province=provinceForBeach(name,value);return (province&&provinceToCommunity[province])||'Otras ubicaciones';}
 function displayBeachName(name){return cleanLegacyBeachName(name).replace(/\s*\((?:Málaga|Granada|Mallorca|Fuengirola|Mijas|Almuñécar)\)\s*/ig,'').trim();}
