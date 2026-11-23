@@ -160,7 +160,7 @@ function rebuildBeachSelect(preferred){
   provinces.forEach(province=>{
    const group=document.createElement('optgroup');group.label=community+' · '+province;
    entries.filter(item=>item.community===community&&item.province===province).sort((a,b)=>displayBeachName(a.name).localeCompare(displayBeachName(b.name),'es',{sensitivity:'base'})).forEach(item=>{
-    const o=document.createElement('option');o.value=cleanLegacyBeachName(item.name);o.textContent=displayBeachName(item.name)+' · '+province;group.appendChild(o);
+    const o=document.createElement('option');o.value=cleanLegacyBeachName(item.name);o.textContent=displayBeachName(item.name);group.appendChild(o);
    });
    if(group.children.length)sel.appendChild(group);
   });
